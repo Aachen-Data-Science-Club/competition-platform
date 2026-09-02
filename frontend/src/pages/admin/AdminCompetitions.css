@@ -1,0 +1,86 @@
+.admin-actions-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.competitions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.comp-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.comp-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comp-card-title h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.comp-card-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.schema-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.schema-row .input {
+  flex: 1;
+}
+
+.schema-row select.input {
+  max-width: 200px;
+}
+
+.schema-minmax {
+  max-width: 100px !important;
+  flex: 0 0 auto !important;
+}
+
+.file-upload-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.file-upload-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.test-data-stats {
+  margin-top: 16px;
+  padding: 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}

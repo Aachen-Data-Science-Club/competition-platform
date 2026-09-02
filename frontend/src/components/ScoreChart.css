@@ -1,0 +1,8 @@
+.score-chart {
+  width: 100%;
+  min-height: 280px;
+}
+
+.score-chart canvas {
+  display: block;
+}

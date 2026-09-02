@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adsc-backend-prod
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      # In production, we only mount the data directory, NOT the source code
+      - ./data:/app/data
+      - prod_db:/app/db # Dedicated volume for SQLite DB (if still using SQLite)
+    environment:
+      - ENVIRONMENT=production
+      # In prod, you'd ideally use PostgreSQL (e.g. DATABASE_URL=postgresql://user:pass@db:5432/adsc)
+      # But sticking to SQLite in a volume for simplicity here:
+      - DATABASE_URL=sqlite:////app/db/adsc.db
+      - SECRET_KEY=YOUR_SECURE_RANDOM_KEY_HERE # MUST BE CHANGED!
+      - ADMIN_ACCESS_CODE=YOUR_SECURE_ADMIN_CODE
+      # - SMTP_HOST=smtp.your-provider.com
+      # ... other SMTP vars
+    command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] # No --reload in prod
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: adsc-frontend-prod
+    restart: always
+    ports:
+      - "80:80" # Exposed on port 80 instead of 5173
+    depends_on:
+      - backend
+
+volumes:
+  prod_db:

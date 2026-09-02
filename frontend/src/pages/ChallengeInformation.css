@@ -1,0 +1,69 @@
+.challenge-details {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.challenge-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .challenge-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.challenge-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.challenge-detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.challenge-detail-value {
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+p.challenge-detail-value {
+  margin: 0;
+}
+
+.challenge-format-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.challenge-format-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.challenge-format-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.challenge-format-range {
+  font-size: 13px;
+  color: var(--text-muted);
+}
