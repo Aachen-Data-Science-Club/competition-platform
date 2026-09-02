@@ -11,3 +11,4 @@ data/training/
 data/test/
 .DS_Store
 *.log
+#

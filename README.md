@@ -1,3 +1,4 @@
+
 # ADSC Competition Platform
 
 A data science competition platform built for the [Aachen Data Science Club](https://data-science-club.de/). Teams compete by uploading ONNX classification models that are evaluated daily against hidden test datasets.
@@ -97,3 +98,5 @@ docker-compose -f docker-compose.prod.yml up --build -d
 ├── docker-compose.yml
 └── .env.example
 ```
+=======
+# Computer Vision Challenge - Internal
