@@ -7,12 +7,14 @@ from sqlalchemy import func
 
 from api.dependencies import get_db
 from api.auth import require_admin
+from api.email import send_access_codes
 from api.models.team import Team
 from api.models.member import Member
 from api.models.competition import Competition
 from api.models.score import DailyScore
 from api.models.submission import Submission
 from api.schemas.team import TeamCreate, TeamOut, MemberOut, MemberCreate
+from api.schemas.team import TeamCreateResult, MemberCreateResult
 from api.schemas.competition import CompetitionCreate, CompetitionUpdate, CompetitionOut
 from api.config import settings
 
@@ -21,6 +23,13 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 def generate_access_code(team_name: str) -> str:
     return f"{team_name}-{secrets.token_hex(4)}"
+
+
+def _recipients(members: list[Member]):
+    return [
+        {"name": m.name, "email": m.email, "access_code": m.access_code}
+        for m in members
+    ]
 
 
 @router.get("/teams", response_model=list[TeamOut])
@@ -38,7 +47,7 @@ def list_all_teams(admin: dict = Depends(require_admin), db: Session = Depends(g
     return result
 
 
-@router.post("/teams", response_model=TeamOut)
+@router.post("/teams", response_model=TeamCreateResult)
 def create_team(body: TeamCreate, admin: dict = Depends(require_admin), db: Session = Depends(get_db)):
     existing = db.query(Team).filter(Team.name == body.name).first()
     if existing:
@@ -64,11 +73,17 @@ def create_team(body: TeamCreate, admin: dict = Depends(require_admin), db: Sess
     for m in members:
         db.refresh(m)
 
-    return TeamOut(
+    recipients = _recipients(members)
+    failed = send_access_codes(team.name, recipients)
+
+    return TeamCreateResult(
         id=team.id,
         name=team.name,
         total_points=team.total_points,
         members=[MemberOut.model_validate(m) for m in members],
+        emails_sent=len(recipients) - len(failed),
+        email_failures=failed,
+        codes=recipients,
     )
 
 
@@ -86,7 +101,7 @@ def delete_team(team_id: int, admin: dict = Depends(require_admin), db: Session 
     return {"detail": "Team deleted"}
 
 
-@router.post("/teams/{team_id}/members", response_model=MemberOut)
+@router.post("/teams/{team_id}/members", response_model=MemberCreateResult)
 def add_member(
     team_id: int,
     body: MemberCreate,
@@ -106,7 +121,15 @@ def add_member(
     db.add(member)
     db.commit()
     db.refresh(member)
-    return MemberOut.model_validate(member)
+
+    recipients = _recipients([member])
+    failed = send_access_codes(team.name, recipients)
+
+    return MemberCreateResult(
+        **MemberOut.model_validate(member).model_dump(),
+        email_sent=not failed,
+        codes=recipients,
+    )
 
 
 @router.put("/members/{member_id}/name")
@@ -122,6 +145,23 @@ def update_member_name(
     member.name = body["name"]
     db.commit()
     return {"detail": "Member name updated"}
+
+
+@router.post("/teams/{team_id}/send-codes")
+def send_codes(team_id: int, admin: dict = Depends(require_admin), db: Session = Depends(get_db)):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    members = db.query(Member).filter(Member.team_id == team_id, Member.is_active == True).all()
+    recipients = _recipients(members)
+    failed = send_access_codes(team.name, recipients)
+    return {
+        "detail": "Access codes sent",
+        "codes": recipients,
+        "emails_sent": len(recipients) - len(failed),
+        "email_failures": failed,
+    }
 
 
 @router.delete("/members/{member_id}")
@@ -145,15 +185,18 @@ def generate_and_send_codes(
         raise HTTPException(status_code=404, detail="Team not found")
 
     members = db.query(Member).filter(Member.team_id == team_id, Member.is_active == True).all()
-    codes = []
     for member in members:
         member.access_code = generate_access_code(team.name)
-        codes.append({"name": member.name, "email": member.email, "access_code": member.access_code})
-
     db.commit()
 
-    # TODO: Send emails via SMTP when configured
-    return {"detail": "Access codes regenerated", "codes": codes}
+    codes = _recipients(members)
+    failed = send_access_codes(team.name, codes)
+    return {
+        "detail": "Access codes regenerated",
+        "codes": codes,
+        "emails_sent": len(codes) - len(failed),
+        "email_failures": failed,
+    }
 
 
 from datetime import date
