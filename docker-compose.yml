@@ -11,11 +11,11 @@ services:
     volumes:
       - ./backend:/app
       - ./data:/app/data
+    env_file:
+      - ./backend/.env
     environment:
       - ENVIRONMENT=development
-      - DATABASE_URL=sqlite:///./adsc.db
-      - SECRET_KEY=change-me-to-a-random-secret
-      - ADMIN_ACCESS_CODE=admin-secret-code
+      - DATA_DIR=/app/data
 
   frontend:
     build:

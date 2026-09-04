@@ -22,6 +22,17 @@ class TeamOut(BaseModel):
         from_attributes = True
 
 
+class TeamCreateResult(TeamOut):
+    emails_sent: int = 0
+    email_failures: list[str] = []
+    codes: list[dict] = []
+
+
+class MemberCreateResult(MemberOut):
+    email_sent: bool = False
+    codes: list[dict] = []
+
+
 class TeamNameUpdate(BaseModel):
     name: str
 

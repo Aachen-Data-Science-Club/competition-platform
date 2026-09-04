@@ -9,7 +9,9 @@ export default function AdminTeams() {
   const [newTeam, setNewTeam] = useState({ name: "", members: [{ name: "", email: "" }] });
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [expandedTeam, setExpandedTeam] = useState(null);
-  const [generatedCodes, setGeneratedCodes] = useState(null);
+  const [codesModal, setCodesModal] = useState(null);
+  const [addMemberFor, setAddMemberFor] = useState(null);
+  const [newMember, setNewMember] = useState({ name: "", email: "" });
 
   useEffect(() => { loadTeams(); }, []);
 
@@ -53,11 +55,18 @@ export default function AdminTeams() {
   async function handleCreate(e) {
     e.preventDefault();
     try {
-      await api.adminCreateTeam(newTeam);
+      const result = await api.adminCreateTeam(newTeam);
       setShowCreate(false);
       setNewTeam({ name: "", members: [{ name: "", email: "" }] });
       await loadTeams();
-      showMsg("Team created successfully");
+      setCodesModal({ title: "New Team Access Codes", codes: result.codes });
+      const failed = result.email_failures ?? [];
+      showMsg(
+        failed.length
+          ? `Team created, but codes could not be emailed to: ${failed.join(", ")}`
+          : `Team created and codes emailed to ${result.emails_sent} member(s)`,
+        failed.length ? "error" : "success"
+      );
     } catch (err) {
       showMsg(err.message, "error");
     }
@@ -85,25 +94,52 @@ export default function AdminTeams() {
     }
   }
 
-  async function handleGenerateCodes(teamId) {
+  async function handleSendCodes(teamId) {
     try {
-      const result = await api.adminGenerateCodes(teamId);
-      setGeneratedCodes(result.codes);
-      showMsg("Access codes regenerated");
+      const result = await api.adminSendCodes(teamId);
+      setCodesModal({ title: "Access Codes Sent", codes: result.codes });
+      const failed = result.email_failures ?? [];
+      showMsg(
+        failed.length
+          ? `Codes sent, but ${failed.length} email(s) failed: ${failed.join(", ")}`
+          : `Codes sent to ${result.emails_sent} member(s)`,
+        failed.length ? "error" : "success"
+      );
     } catch (err) {
       showMsg(err.message, "error");
     }
   }
 
-  async function handleAddMember(teamId) {
-    const name = prompt("Member name:");
-    if (!name) return;
-    const email = prompt("Member email:");
-    if (!email) return;
+  async function handleGenerateCodes(teamId) {
+    if (!confirm("This replaces every access code in this team. " +
+      "Members using their current code will be locked out. Continue?")) return;
     try {
-      await api.adminAddMember(teamId, { name, email });
+      const result = await api.adminGenerateCodes(teamId);
+      setCodesModal({ title: "New Access Codes", codes: result.codes });
+      const failed = result.email_failures ?? [];
+      showMsg(
+        failed.length
+          ? `Codes regenerated, but ${failed.length} email(s) failed: ${failed.join(", ")}`
+          : `Codes regenerated and emailed to ${result.emails_sent} member(s)`,
+        failed.length ? "error" : "success"
+      );
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  async function handleAddMember(e) {
+    e.preventDefault();
+    try {
+      const result = await api.adminAddMember(addMemberFor, newMember);
+      setAddMemberFor(null);
+      setNewMember({ name: "", email: "" });
       await loadTeams();
-      showMsg("Member added");
+      setCodesModal({ title: "New Member Access Code", codes: result.codes });
+      showMsg(
+        result.email_sent ? "Member added and code emailed" : "Member added, but the code email failed",
+        result.email_sent ? "success" : "error"
+      );
     } catch (err) {
       showMsg(err.message, "error");
     }
@@ -181,12 +217,46 @@ export default function AdminTeams() {
         </div>
       )}
 
-      {generatedCodes && (
-        <div className="modal-overlay" onClick={() => setGeneratedCodes(null)}>
+      {addMemberFor !== null && (
+        <div className="modal-overlay" onClick={() => setAddMemberFor(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Generated Access Codes</h2>
+            <h2>Add Member</h2>
+            <form onSubmit={handleAddMember}>
+              <div className="form-group">
+                <label className="label">Name</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={newMember.name}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label className="label">Email</label>
+                <input
+                  type="email"
+                  className="input"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                />
+              </div>
+              <div className="modal-actions">
+                <button type="button" className="btn btn-secondary" onClick={() => setAddMemberFor(null)}>Cancel</button>
+                <button type="submit" className="btn btn-primary">Add</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {codesModal && (
+        <div className="modal-overlay" onClick={() => setCodesModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>{codesModal.title}</h2>
             <div className="codes-list">
-              {generatedCodes.map((c, i) => (
+              {codesModal.codes.map((c, i) => (
                 <div key={i} className="code-row">
                   <div>
                     <div className="member-name">{c.name}</div>
@@ -197,7 +267,7 @@ export default function AdminTeams() {
               ))}
             </div>
             <div className="modal-actions">
-              <button className="btn btn-primary" onClick={() => setGeneratedCodes(null)}>Close</button>
+              <button className="btn btn-primary" onClick={() => setCodesModal(null)}>Close</button>
             </div>
           </div>
         </div>
@@ -217,11 +287,14 @@ export default function AdminTeams() {
                 </div>
               </div>
               <div className="team-card-actions">
-                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleGenerateCodes(team.id); }}>
-                  🔑 Generate Codes
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleSendCodes(team.id); }}>
+                  Send Codes
                 </button>
-                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleAddMember(team.id); }}>
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setAddMemberFor(team.id); }}>
                   + Member
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleGenerateCodes(team.id); }}>
+                  Regenerate
                 </button>
                 <button className="btn btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); handleDelete(team.id, team.name); }}>
                   Delete

@@ -86,7 +86,8 @@ export const api = {
     request(`/admin/members/${memberId}`, { method: "DELETE" }),
   adminGenerateCodes: (teamId) =>
     request(`/admin/teams/${teamId}/generate-codes`, { method: "POST" }),
-
+  adminSendCodes: (teamId) => 
+    request(`/admin/teams/${teamId}/send-codes`, { method: "POST" }),
   adminCreateCompetition: (data) =>
     request("/admin/competitions", {
       method: "POST",
