@@ -98,5 +98,3 @@ docker-compose -f docker-compose.prod.yml up --build -d
 ├── docker-compose.yml
 └── .env.example
 ```
-=======
-# Computer Vision Challenge - Internal
