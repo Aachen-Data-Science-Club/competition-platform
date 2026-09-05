@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
 import "./Settings.css";
+import Toast from "../components/Toast";
 
 export default function Settings() {
   const { user, login } = useAuth();
@@ -116,9 +117,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {msg.text && (
-        <div className={`toast toast-${msg.type}`}>{msg.text}</div>
-      )}
+      <Toast text={msg.text} type={msg.type} />
     </div>
   );
 }
