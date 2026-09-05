@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { api } from "../../api";
 import "./AdminTeams.css";
+import Modal from "../../components/Modal";
+import Toast from "../../components/Toast";
 
 export default function AdminTeams() {
   const [teams, setTeams] = useState([]);
@@ -160,118 +162,103 @@ export default function AdminTeams() {
         </button>
       </div>
 
-      {showCreate && (
-        <div className="modal-overlay" onClick={() => setShowCreate(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Create Team</h2>
-            <form onSubmit={handleCreate}>
-              <div className="form-group">
-                <label className="label">Team Name</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={newTeam.name}
-                  onChange={(e) => setNewTeam(prev => ({ ...prev, name: e.target.value }))}
-                  pattern="[a-zA-Z0-9]+"
-                  placeholder="e.g. AlphaAI"
-                  required
-                />
-              </div>
-
-              <label className="label">Members</label>
-              {newTeam.members.map((m, i) => (
-                <div key={i} className="member-input-row">
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="Name"
-                    value={m.name}
-                    onChange={(e) => updateMemberField(i, "name", e.target.value)}
-                    required
-                  />
-                  <input
-                    type="email"
-                    className="input"
-                    placeholder="Email"
-                    value={m.email}
-                    onChange={(e) => updateMemberField(i, "email", e.target.value)}
-                    required
-                  />
-                  {newTeam.members.length > 1 && (
-                    <button type="button" className="btn btn-danger btn-icon" onClick={() => removeMemberField(i)}>
-                      ✕
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button type="button" className="btn btn-secondary btn-sm" onClick={addMemberField} style={{ marginTop: "8px" }}>
-                + Add Member
-              </button>
-
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Create</button>
-              </div>
-            </form>
+      <Modal open={showCreate} onClose={() => setShowCreate(false)} title="Create Team">
+        <form onSubmit={handleCreate}>
+          <div className="form-group">
+            <label className="label">Team Name</label>
+            <input
+              type="text"
+              className="input"
+              value={newTeam.name}
+              onChange={(e) => setNewTeam(prev => ({ ...prev, name: e.target.value }))}
+              pattern="[a-zA-Z0-9]+"
+              placeholder="e.g. AlphaAI"
+              required
+            />
           </div>
-        </div>
-      )}
 
-      {addMemberFor !== null && (
-        <div className="modal-overlay" onClick={() => setAddMemberFor(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Add Member</h2>
-            <form onSubmit={handleAddMember}>
-              <div className="form-group">
-                <label className="label">Name</label>
-                <input
-                  type="text"
-                  className="input"
-                  value={newMember.name}
-                  onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="label">Email</label>
-                <input
-                  type="email"
-                  className="input"
-                  value={newMember.email}
-                  onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
-                  required
-                />
-              </div>
-              <div className="modal-actions">
-                <button type="button" className="btn btn-secondary" onClick={() => setAddMemberFor(null)}>Cancel</button>
-                <button type="submit" className="btn btn-primary">Add</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {codesModal && (
-        <div className="modal-overlay" onClick={() => setCodesModal(null)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>{codesModal.title}</h2>
-            <div className="codes-list">
-              {codesModal.codes.map((c, i) => (
-                <div key={i} className="code-row">
-                  <div>
-                    <div className="member-name">{c.name}</div>
-                    <div className="member-email">{c.email}</div>
-                  </div>
-                  <code className="access-code">{c.access_code}</code>
-                </div>
-              ))}
+          <label className="label">Members</label>
+          {newTeam.members.map((m, i) => (
+            <div key={i} className="member-input-row">
+              <input
+                type="text"
+                className="input"
+                placeholder="Name"
+                value={m.name}
+                onChange={(e) => updateMemberField(i, "name", e.target.value)}
+                required
+              />
+              <input
+                type="email"
+                className="input"
+                placeholder="Email"
+                value={m.email}
+                onChange={(e) => updateMemberField(i, "email", e.target.value)}
+                required
+              />
+              {newTeam.members.length > 1 && (
+                <button type="button" className="btn btn-danger btn-icon" onClick={() => removeMemberField(i)}>
+                  ✕
+                </button>
+              )}
             </div>
-            <div className="modal-actions">
-              <button className="btn btn-primary" onClick={() => setCodesModal(null)}>Close</button>
-            </div>
+          ))}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={addMemberField} style={{ marginTop: "8px" }}>
+            + Add Member
+          </button>
+
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setShowCreate(false)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Create</button>
           </div>
+        </form>
+      </Modal>
+
+      <Modal open={addMemberFor !== null} onClose={() => setAddMemberFor(null)} title="Add Member">
+        <form onSubmit={handleAddMember}>
+          <div className="form-group">
+            <label className="label">Name</label>
+            <input
+              type="text"
+              className="input"
+              value={newMember.name}
+              onChange={(e) => setNewMember(prev => ({ ...prev, name: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label className="label">Email</label>
+            <input
+              type="email"
+              className="input"
+              value={newMember.email}
+              onChange={(e) => setNewMember(prev => ({ ...prev, email: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-secondary" onClick={() => setAddMemberFor(null)}>Cancel</button>
+            <button type="submit" className="btn btn-primary">Add</button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={!!codesModal} onClose={() => setCodesModal(null)} title={codesModal?.title}>
+        <div className="codes-list">
+          {codesModal?.codes.map((c, i) => (
+            <div key={i} className="code-row">
+              <div>
+                <div className="member-name">{c.name}</div>
+                <div className="member-email">{c.email}</div>
+              </div>
+              <code className="access-code">{c.access_code}</code>
+            </div>
+          ))}
         </div>
-      )}
+        <div className="modal-actions">
+          <button className="btn btn-primary" onClick={() => setCodesModal(null)}>Close</button>
+        </div>
+      </Modal>
 
       <div className="teams-list">
         {teams.map((team) => (
@@ -330,7 +317,7 @@ export default function AdminTeams() {
         ))}
       </div>
 
-      {msg.text && <div className={`toast toast-${msg.type}`}>{msg.text}</div>}
+      <Toast text={msg.text} type={msg.type} />
     </div>
   );
 }

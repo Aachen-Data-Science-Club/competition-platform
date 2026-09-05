@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import JSZip from "jszip";
 import { api } from "../../api";
 import "./AdminCompetitions.css";
+import Toast from "../../components/Toast";
 
 export default function AdminChallengeForm() {
   const { id } = useParams();
@@ -257,7 +258,7 @@ export default function AdminChallengeForm() {
         </form>
       </div>
 
-      {msg.text && <div className={`toast toast-${msg.type}`}>{msg.text}</div>}
+      <Toast text={msg.text} type={msg.type} />
     </div>
   );
 }

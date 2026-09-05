@@ -383,6 +383,10 @@ tr.highlight td {
   font-size: 14px;
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 .loading-spinner {
   display: flex;
   align-items: center;
@@ -410,7 +414,7 @@ tr.highlight td {
 }
 
 .fade-in {
-  animation: fadeIn 0.3s ease forwards;
+  animation: fadeIn 0.3s ease;
 }
 
 @keyframes slideIn {
@@ -442,6 +446,11 @@ tr.highlight td {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -449,9 +458,10 @@ tr.highlight td {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
   z-index: 100;
   backdrop-filter: blur(4px);
-  animation: fadeIn 0.2s ease;
+  animation: overlayIn 0.2s ease;
 }
 
 .modal {
@@ -459,7 +469,7 @@ tr.highlight td {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   padding: 32px;
-  width: 90%;
+  width: 100%;
   max-width: 480px;
   max-height: 90vh;
   overflow-y: auto;
