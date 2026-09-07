@@ -74,6 +74,16 @@ export default function AdminTeams() {
     }
   }
 
+  async function handleResetSubmissions(teamId) {
+    if (!confirm("Are you sure you want to reset today's upload limit for this team? This deletes their existing submission for today.")) return;
+    try {
+      const res = await api.adminResetTeamSubmissions(teamId);
+      showMsg(res.detail || "Upload limit reset.", "success");
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
   async function handleDelete(teamId, teamName) {
     if (!confirm(`Delete team "${teamName}" and all its data?`)) return;
     try {
@@ -279,6 +289,9 @@ export default function AdminTeams() {
                 </button>
                 <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); setAddMemberFor(team.id); }}>
                   + Member
+                </button>
+                <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleResetSubmissions(team.id); }}>
+                  Reset Submission
                 </button>
                 <button className="btn btn-secondary btn-sm" onClick={(e) => { e.stopPropagation(); handleGenerateCodes(team.id); }}>
                   Regenerate
