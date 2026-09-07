@@ -58,9 +58,11 @@ export const api = {
   getCompetition: (id) => request(`/competitions/${id}`),
   getMyScores: (compId) => request(`/competitions/${compId}/my-scores`),
   getMySubmissions: (compId) => request(`/competitions/${compId}/my-submissions`),
-  submitModel: (compId) =>
-    request(`/competitions/${compId}/submit`, { method: "POST" }),
-
+  submitModel: (compId, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request(`/competitions/${compId}/submit`, { method: "POST", body: formData });
+  },
   getGlobalLeaderboard: () => request("/leaderboard/global"),
   getCompetitionLeaderboard: (compId) => request(`/leaderboard/competition/${compId}`),
 

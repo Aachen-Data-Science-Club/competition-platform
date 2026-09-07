@@ -30,7 +30,7 @@ export default function UploadModel() {
   async function handleUpload(file) {
     if (!comp) return;
     try {
-      await api.submitModel(comp.id);
+      await api.submitModel(comp.id, file);
       setUploadMsg("Model submitted successfully!");
       const sub = await api.getMySubmissions(comp.id);
       setSubmissions(sub);
