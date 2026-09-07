@@ -113,6 +113,7 @@ export default function AdminChallengeForm() {
       let savedComp;
       if (isEdit) {
         savedComp = await api.adminUpdateCompetition(id, formData);
+      } else {
         savedComp = await api.adminCreateCompetition(formData);
       }
       if (trainingFile) await api.adminUploadTraining(savedComp.id, trainingFile);
