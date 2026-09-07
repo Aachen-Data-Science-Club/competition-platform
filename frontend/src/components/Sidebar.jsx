@@ -25,7 +25,6 @@ export default function Sidebar() {
   async function handleDownloadTraining() {
     if (!activeComp) return;
     try {
-      const token = localStorage.getItem("adsc_token");
       const response = await api.downloadTrainingData(activeComp.id)
       if (!response.ok) throw new Error("Training data not available");
       const blob = await response.blob();

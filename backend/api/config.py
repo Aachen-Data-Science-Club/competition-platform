@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str = ""
     ENVIRONMENT: str = "development"
     DATA_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+    CORS_ORIGINS: str = "http://localhost:5173"
 
+    # Overwrite entries if exists
     class Config:
         env_file = ".env"
 
