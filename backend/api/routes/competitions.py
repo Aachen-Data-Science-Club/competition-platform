@@ -24,9 +24,7 @@ from sqlalchemy import and_
 
 @router.get("/active", response_model=CompetitionOut | None)
 def get_active_competition(db: Session = Depends(get_db)):
-    comp = db.query(Competition).filter(
-        and_(Competition.start_date <= date.today(), Competition.end_date >= date.today())
-    ).first()
+    comp = db.query(Competition).filter(Competition.is_active).first()
     if not comp:
         return None
     return comp
