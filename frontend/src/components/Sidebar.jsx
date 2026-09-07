@@ -26,10 +26,7 @@ export default function Sidebar() {
     if (!activeComp) return;
     try {
       const token = localStorage.getItem("adsc_token");
-      const response = await fetch(
-        `http://localhost:8000/api/competitions/${activeComp.id}/training-data`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await api.downloadTrainingData(activeComp.id)
       if (!response.ok) throw new Error("Training data not available");
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
@@ -40,6 +37,7 @@ export default function Sidebar() {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error(err);
+      alert(err.message);
     }
   }
 

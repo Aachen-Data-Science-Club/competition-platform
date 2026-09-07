@@ -118,4 +118,10 @@ export const api = {
   },
   adminResetSemester: () =>
     request("/admin/reset-semester", { method: "POST" }),
+  downloadTrainingData: async (compId) => {
+    const token = localStorage.getItem("adsc_token");
+    return fetch(`http://localhost:8000/api/competitions/${compId}/training-data`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  }
 };
