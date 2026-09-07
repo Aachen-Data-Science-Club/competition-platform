@@ -4,6 +4,7 @@ import zipfile
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from datetime import date, timedelta
 
 from api.dependencies import get_db
 from api.auth import require_admin
@@ -322,7 +323,9 @@ def reset_semester(admin: dict = Depends(require_admin), db: Session = Depends(g
     db.query(Team).update({"total_points": 0})
     db.query(DailyScore).delete()
     db.query(Submission).delete()
-    db.query(Competition).update({"is_active": False})
+    yesterday = date.today() - timedelta(days=1)
+    # End all currently active or upcoming challenges
+    db.query(Competition).filter(Competition.end_date >= date.today()).update({"end_date": yesterday})
     db.commit()
     return {"detail": "Semester reset complete"}
 

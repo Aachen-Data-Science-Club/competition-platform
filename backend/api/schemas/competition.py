@@ -40,5 +40,4 @@ class CompetitionUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     evaluation_time: str | None = None
-    is_active: bool | None = None
     classification_schema: list[ClassificationField] | None = None
