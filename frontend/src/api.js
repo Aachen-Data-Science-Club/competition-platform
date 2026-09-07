@@ -1,4 +1,4 @@
-const API_BASE = "http://localhost:8000/api";
+const API_BASE = "/api";
 
 function getToken() {
   return localStorage.getItem("adsc_token");
@@ -120,7 +120,7 @@ export const api = {
     request("/admin/reset-semester", { method: "POST" }),
   downloadTrainingData: async (compId) => {
     const token = localStorage.getItem("adsc_token");
-    return fetch(`http://localhost:8000/api/competitions/${compId}/training-data`, {
+    return fetch(`${API_BASE}/competitions/${compId}/training-data`, {
       headers: { Authorization: `Bearer ${token}` }
     });
   }
