@@ -88,6 +88,8 @@ export const api = {
     request(`/admin/teams/${teamId}/generate-codes`, { method: "POST" }),
   adminSendCodes: (teamId) => 
     request(`/admin/teams/${teamId}/send-codes`, { method: "POST" }),
+  adminResetTeamSubmissions: (teamId) =>
+    request(`/admin/teams/${teamId}/submissions/today`, { method: "DELETE" }),
   adminCreateCompetition: (data) =>
     request("/admin/competitions", {
       method: "POST",

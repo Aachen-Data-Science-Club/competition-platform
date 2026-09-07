@@ -99,7 +99,25 @@ def delete_team(team_id: int, admin: dict = Depends(require_admin), db: Session 
     db.query(Submission).filter(Submission.team_id == team_id).delete()
     db.delete(team)
     db.commit()
-    return {"detail": "Team deleted"}
+    return {"detail": "Team and all related data deleted"}
+
+
+@router.delete("/teams/{team_id}/submissions/today")
+def reset_team_submissions_today(
+    team_id: int, admin: dict = Depends(require_admin), db: Session = Depends(get_db)
+):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+        
+    today = date.today()
+    submissions = db.query(Submission).filter(Submission.team_id == team_id).all()
+    for sub in submissions:
+        if sub.submitted_at.date() == today:
+            db.delete(sub)
+            
+    db.commit()
+    return {"detail": "Team upload limit for today has been reset."}
 
 
 @router.post("/teams/{team_id}/members", response_model=MemberCreateResult)
