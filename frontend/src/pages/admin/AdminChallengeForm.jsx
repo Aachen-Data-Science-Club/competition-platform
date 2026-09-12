@@ -22,7 +22,7 @@ export default function AdminChallengeForm() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    start_date: today,
+    start_date: "",
     end_date: "",
     evaluation_time: "20:00",
     classification_schema: [{ field: "", type: "boolean" }],
@@ -47,8 +47,35 @@ export default function AdminChallengeForm() {
         setMsg({ text: "Error loading challenge", type: "error" });
         setLoading(false);
       });
+    } else {
+      setFormData({
+        name: "",
+        description: "",
+        start_date: "",
+        end_date: "",
+        evaluation_time: "20:00",
+        classification_schema: [{ field: "", type: "boolean" }],
+      });
+      setTrainingFile(null);
+      setTestFile(null);
+      setPreviewTestCount(null);
     }
-  }, [id, isEdit]);
+  }, [id, isEdit, today]);
+
+  function handleResetForm() {
+    if (!confirm("Are you sure you want to clear all form fields?")) return;
+    setFormData(prev => ({
+      name: "",
+      description: "",
+      start_date: (isEdit && prev.start_date && prev.start_date <= today) ? prev.start_date : "",
+      end_date: "",
+      evaluation_time: "20:00",
+      classification_schema: [{ field: "", type: "boolean" }],
+    }));
+    setTrainingFile(null);
+    setTestFile(null);
+    setPreviewTestCount(null);
+  }
 
   async function handleTestFileChange(e) {
     const file = e.target.files?.[0] || null;
@@ -119,6 +146,7 @@ export default function AdminChallengeForm() {
       if (trainingFile) await api.adminUploadTraining(savedComp.id, trainingFile);
       if (testFile) await api.adminUploadTest(savedComp.id, testFile);
 
+      window.dispatchEvent(new Event("competitions_changed"));
       setMsg({ text: "Saved successfully!", type: "success" });
       setTimeout(() => navigate("/admin/challenges"), 1500);
     } catch (err) {
@@ -131,6 +159,7 @@ export default function AdminChallengeForm() {
     setMsg({ text: "Deleting...", type: "info" });
     try {
       await api.adminDeleteCompetition(id);
+      window.dispatchEvent(new Event("competitions_changed"));
       setMsg({ text: "Challenge deleted", type: "success" });
       setTimeout(() => navigate("/admin/challenges"), 1000);
     } catch (err) {
@@ -140,7 +169,7 @@ export default function AdminChallengeForm() {
 
   if (loading) return <div className="page-container"><p>Loading...</p></div>;
 
-  const isStarted = isEdit && formData.start_date <= today;
+  const isStarted = isEdit && Boolean(formData.start_date) && formData.start_date <= today;
 
   return (
     <div className="page-container">
@@ -164,7 +193,8 @@ export default function AdminChallengeForm() {
           <div className="form-group">
             <label className="label">Description</label>
             <textarea className="input" rows={4} value={formData.description}
-              onChange={(e) => updateField("description", e.target.value)} />
+              onChange={(e) => updateField("description", e.target.value)}
+              style={{ resize: "vertical" }} />
           </div>
           <div className="grid-2">
             <div className="form-group">
@@ -253,6 +283,7 @@ export default function AdminChallengeForm() {
           })()}
 
           <div style={{ display: "flex", gap: "12px", marginTop: "32px", justifyContent: "flex-end" }}>
+            <button type="button" className="btn btn-secondary" onClick={handleResetForm}>Clear Form</button>
             <button type="button" className="btn btn-secondary" onClick={() => navigate("/admin/challenges")}>Cancel</button>
             <button type="submit" className="btn btn-primary">{isEdit ? "Publish Changes" : "Publish Challenge"}</button>
           </div>
