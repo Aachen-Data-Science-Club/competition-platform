@@ -21,6 +21,7 @@ services:
       # But sticking to SQLite in a volume for simplicity here:
       - DATABASE_URL=sqlite:////app/db/adsc.db
       - DATA_DIR=/app/data
+      - TZ=Europe/Berlin
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] # No --reload in prod
 
   frontend:
@@ -33,6 +34,26 @@ services:
       - "80:80" # Exposed on port 80 instead of 5173
     depends_on:
       - backend
+
+  evaluator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adsc-evaluator-prod
+    restart: always
+    depends_on:
+      - backend
+    volumes:
+      - ./data:/app/data
+      - prod_db:/app/db
+    env_file:
+      - ./backend/.env
+    environment:
+      - ENVIRONMENT=production
+      - DATABASE_URL=sqlite:////app/db/adsc.db
+      - DATA_DIR=/app/data
+      - TZ=Europe/Berlin
+    command: ["python", "ml/evaluator.py"]
 
 volumes:
   prod_db:
