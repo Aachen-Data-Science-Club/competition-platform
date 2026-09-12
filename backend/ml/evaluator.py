@@ -3,6 +3,11 @@ import os
 import time
 from datetime import datetime
 
+import zipfile
+import pandas as pd
+from api.models.submission import Submission
+from api.models.score import DailyScore
+
 # Important to import api module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -30,9 +35,25 @@ def run_evaluator():
                     if last_evaluated.get(active_comp.id) != current_date:
                         print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] STARTING EVALUATION FOR: {active_comp.name}", flush=True)
                         
-                        # TODO: Insert actual ML evaluation logic here
+                        submissions = db.query(Submission).filter(Submission.competition_id == active_comp.id).all()
+
+                        if not submissions:
+                            print("No submissions found")
+                            last_evaluated[active_comp.id] = current_date
+                            continue
+
+                        # Store the latest submission for each team
+                        latest_submissions = {}
+
+                        # TODO
                         
-                        last_evaluated[active_comp.id] = current_date
+                        # Open .csv file
+
+                        # TODO
+                        
+                        # Iterate through all items and start evaluation
+
+                        # TODO
             
             db.close()
             

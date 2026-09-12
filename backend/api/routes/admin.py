@@ -326,7 +326,12 @@ async def upload_test_data(
 
     try:
         with zipfile.ZipFile(file_path, 'r') as z:
-            count = sum(1 for item in z.infolist() if not item.is_dir())
+            count = 0
+            for item in z.infolist():
+                if item.is_dir(): continue
+                if item.filename.endswith('.csv'): continue
+                if '__MACOSX' in item.filename or '.DS_Store' in item.filename: continue
+                count += 1
         comp.test_data_count = count
     except Exception:
         pass
