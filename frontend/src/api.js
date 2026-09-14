@@ -21,7 +21,7 @@ async function request(endpoint, options = {}) {
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && endpoint !== "/auth/login") {
     localStorage.removeItem("adsc_token");
     localStorage.removeItem("adsc_user");
     window.location.href = "/login";
