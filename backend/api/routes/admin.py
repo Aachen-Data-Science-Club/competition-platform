@@ -1,9 +1,11 @@
-import secrets
 import os
+import re
+import secrets
+import shutil
 import zipfile
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import and_, func
 from datetime import date, timedelta
 
 from api.dependencies import get_db
@@ -218,20 +220,25 @@ def generate_and_send_codes(
     }
 
 
-from datetime import date
-from sqlalchemy import and_
-
 @router.post("/competitions", response_model=CompetitionOut)
 def create_competition(
     body: CompetitionCreate,
     admin: dict = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
+    if body.start_date < date.today():
+        raise HTTPException(status_code=400, detail="Start date must not be in the past")
+
     overlap = db.query(Competition).filter(
         and_(Competition.start_date <= body.end_date, Competition.end_date >= body.start_date)
     ).first()
     if overlap:
-        raise HTTPException(status_code=400, detail=f"Challenge overlaps with '{overlap.name}'")
+        raise HTTPException(
+            status_code=400,
+            detail=(f"Challenge overlaps with '{overlap.name}' "
+                    f"({overlap.start_date} – {overlap.end_date}). "
+                    f"Earliest possible start: {overlap.end_date + timedelta(days=1)}."),
+        )
 
     comp = Competition(
         name=body.name,
@@ -261,15 +268,29 @@ def update_competition(
     new_start = body.start_date if body.start_date is not None else comp.start_date
     new_end = body.end_date if body.end_date is not None else comp.end_date
 
+    if new_end < new_start:
+        raise HTTPException(status_code=400, detail="End date must not be before start date")
+
     if body.start_date is not None and body.start_date != comp.start_date:
         if comp.start_date <= date.today():
             raise HTTPException(status_code=400, detail="Cannot change start date of a challenge that has already started.")
+
+    if body.end_date is not None and body.end_date != comp.end_date:
+        if comp.start_date <= date.today() and body.end_date < date.today():
+            raise HTTPException(
+                status_code=400,
+                detail="Cannot set the end date of a running challenge into the past. "
+                       "Set it to today to end it, or delete the challenge.",
+            )
 
     overlap = db.query(Competition).filter(
         and_(Competition.id != competition_id, Competition.start_date <= new_end, Competition.end_date >= new_start)
     ).first()
     if overlap:
-        raise HTTPException(status_code=400, detail=f"Challenge dates overlap with '{overlap.name}'")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Challenge dates overlap with '{overlap.name}' ({overlap.start_date} – {overlap.end_date})",
+        )
 
     for field, value in body.model_dump(exclude_unset=True).items():
         if field == "classification_schema" and value is not None:
@@ -281,8 +302,31 @@ def update_competition(
     return comp
 
 
+def _save_zip(upload: UploadFile, subdir: str, competition_id: int) -> str:
+    name = os.path.basename(upload.filename or "")
+    if not name.lower().endswith(".zip"):
+        raise HTTPException(status_code=400, detail="Please upload a .zip file")
+    name = re.sub(r"[^A-Za-z0-9._-]", "_", name)
+
+    target_dir = os.path.join(settings.DATA_DIR, subdir)
+    os.makedirs(target_dir, exist_ok=True)
+    path = os.path.join(target_dir, f"comp_{competition_id}_{name}")
+    with open(path, "wb") as f:
+        shutil.copyfileobj(upload.file, f)
+
+    if not zipfile.is_zipfile(path):
+        os.remove(path)
+        raise HTTPException(status_code=400, detail="File is not a valid .zip archive")
+    return path
+
+
+def _replace_file(old_path: str | None, new_path: str | None):
+    if old_path and old_path != new_path and os.path.exists(old_path):
+        os.remove(old_path)
+
+
 @router.post("/competitions/{competition_id}/upload-training")
-async def upload_training_data(
+def upload_training_data(
     competition_id: int,
     file: UploadFile = File(...),
     admin: dict = Depends(require_admin),
@@ -292,21 +336,16 @@ async def upload_training_data(
     if not comp:
         raise HTTPException(status_code=404, detail="Competition not found")
 
-    training_dir = os.path.join(settings.DATA_DIR, "training")
-    os.makedirs(training_dir, exist_ok=True)
-    file_path = os.path.join(training_dir, f"comp_{competition_id}_{file.filename}")
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
+    file_path = _save_zip(file, "training", competition_id)
+    old_path = comp.training_data_path
     comp.training_data_path = file_path
     db.commit()
+    _replace_file(old_path, file_path)
     return {"detail": "Training data uploaded", "path": file_path}
 
 
 @router.post("/competitions/{competition_id}/upload-test")
-async def upload_test_data(
+def upload_test_data(
     competition_id: int,
     file: UploadFile = File(...),
     admin: dict = Depends(require_admin),
@@ -316,24 +355,15 @@ async def upload_test_data(
     if not comp:
         raise HTTPException(status_code=404, detail="Competition not found")
 
-    test_dir = os.path.join(settings.DATA_DIR, "test")
-    os.makedirs(test_dir, exist_ok=True)
-    file_path = os.path.join(test_dir, f"comp_{competition_id}_{file.filename}")
-
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
-    try:
-        with zipfile.ZipFile(file_path, 'r') as z:
-            count = sum(1 for item in z.infolist() if not item.is_dir())
-        comp.test_data_count = count
-    except Exception:
-        pass
-
+    file_path = _save_zip(file, "test", competition_id)
+    with zipfile.ZipFile(file_path) as z:
+        count = sum(1 for item in z.infolist() if not item.is_dir())
+    old_path = comp.test_data_path
     comp.test_data_path = file_path
+    comp.test_data_count = count
     db.commit()
-    return {"detail": "Test data uploaded", "path": file_path, "count": comp.test_data_count}
+    _replace_file(old_path, file_path)
+    return {"detail": "Test data uploaded", "path": file_path, "count": count}
 
 
 @router.post("/reset-semester")
@@ -341,11 +371,25 @@ def reset_semester(admin: dict = Depends(require_admin), db: Session = Depends(g
     db.query(Team).update({"total_points": 0})
     db.query(DailyScore).delete()
     db.query(Submission).delete()
-    yesterday = date.today() - timedelta(days=1)
-    # End all currently active or upcoming challenges
-    db.query(Competition).filter(Competition.end_date >= date.today()).update({"end_date": yesterday})
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+
+    # End challenges that started before today; delete those starting today or later,
+    db.query(Competition).filter(
+        Competition.start_date < today, Competition.end_date >= today
+    ).update({"end_date": yesterday}, synchronize_session=False)
+
+    upcoming = db.query(Competition).filter(Competition.start_date >= today).all()
+    old_files = [p for c in upcoming for p in (c.training_data_path, c.test_data_path)]
+    for c in upcoming:
+        db.delete(c)
+
     db.commit()
+
+    for path in old_files:
+        _replace_file(path, None)
     return {"detail": "Semester reset complete"}
+
 
 @router.delete("/competitions/{competition_id}")
 def delete_competition(
@@ -359,6 +403,19 @@ def delete_competition(
     
     db.query(DailyScore).filter(DailyScore.competition_id == competition_id).delete()
     db.query(Submission).filter(Submission.competition_id == competition_id).delete()
+    old_files = [comp.training_data_path, comp.test_data_path]
     db.delete(comp)
+    db.flush()
+
+    # rebuild total_points from the remaining daily scores
+    totals = dict(
+        db.query(DailyScore.team_id, func.sum(DailyScore.points))
+          .group_by(DailyScore.team_id).all()
+    )
+    for team in db.query(Team).all():
+        team.total_points = int(totals.get(team.id) or 0)
+
     db.commit()
+    for path in old_files:
+        _replace_file(path, None)
     return {"detail": "Competition deleted"}
