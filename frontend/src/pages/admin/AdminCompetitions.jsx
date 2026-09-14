@@ -24,9 +24,8 @@ export default function AdminCompetitions() {
   }
 
   async function handleResetSemester() {
-    if (!confirm("Reset ALL scores and submissions," + 
-      " end running challenges and DELETE all upcoming challenges?" +
-      " This cannot be undone!")) return;
+    if (!confirm("Reset ALL scores and submissions and end ALL challenges?" +
+      " Challenges are kept and can be deleted individually. This cannot be undone!")) return;
     try {
       await api.adminResetSemester();
       alert("Semester reset complete!");

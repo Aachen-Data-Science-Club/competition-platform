@@ -283,14 +283,17 @@ def update_competition(
                        "Set it to today to end it, or delete the challenge.",
             )
 
-    overlap = db.query(Competition).filter(
-        and_(Competition.id != competition_id, Competition.start_date <= new_end, Competition.end_date >= new_start)
-    ).first()
-    if overlap:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Challenge dates overlap with '{overlap.name}' ({overlap.start_date} – {overlap.end_date})",
-        )
+    # only check overlaps when the dates actually change; after a reset, ended
+    # challenges share the same dates and could otherwise never be edited again
+    if new_start != comp.start_date or new_end != comp.end_date:
+        overlap = db.query(Competition).filter(
+            and_(Competition.id != competition_id, Competition.start_date <= new_end, Competition.end_date >= new_start)
+        ).first()
+        if overlap:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Challenge dates overlap with '{overlap.name}' ({overlap.start_date} – {overlap.end_date})",
+            )
 
     for field, value in body.model_dump(exclude_unset=True).items():
         if field == "classification_schema" and value is not None:
@@ -374,20 +377,17 @@ def reset_semester(admin: dict = Depends(require_admin), db: Session = Depends(g
     today = date.today()
     yesterday = today - timedelta(days=1)
 
-    # End challenges that started before today; delete those starting today or later,
+    # End all challenges instead of deleting them: running ones end yesterday,
+    # upcoming ones get start = end = yesterday (otherwise end_date < start_date).
     db.query(Competition).filter(
         Competition.start_date < today, Competition.end_date >= today
     ).update({"end_date": yesterday}, synchronize_session=False)
-
-    upcoming = db.query(Competition).filter(Competition.start_date >= today).all()
-    old_files = [p for c in upcoming for p in (c.training_data_path, c.test_data_path)]
-    for c in upcoming:
-        db.delete(c)
+    db.query(Competition).filter(
+        Competition.start_date >= today
+    ).update({"start_date": yesterday, "end_date": yesterday}, synchronize_session=False)
 
     db.commit()
 
-    for path in old_files:
-        _replace_file(path, None)
     return {"detail": "Semester reset complete"}
 
 
