@@ -24,7 +24,9 @@ export default function AdminCompetitions() {
   }
 
   async function handleResetSemester() {
-    if (!confirm("Reset ALL scores, submissions, and deactivate ALL challenges? This cannot be undone!")) return;
+    if (!confirm("Reset ALL scores and submissions," + 
+      " end running challenges and DELETE all upcoming challenges?" +
+      " This cannot be undone!")) return;
     try {
       await api.adminResetSemester();
       alert("Semester reset complete!");
@@ -36,7 +38,8 @@ export default function AdminCompetitions() {
 
   if (loading) return <div className="page-container"><p>Loading...</p></div>;
 
-  const today = new Date().toISOString().split("T")[0];
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
   return (
     <div className="page-container">

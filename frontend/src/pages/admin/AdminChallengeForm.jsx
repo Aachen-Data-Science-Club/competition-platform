@@ -5,49 +5,103 @@ import { api } from "../../api";
 import "./AdminCompetitions.css";
 import Toast from "../../components/Toast";
 
+function addDays(iso, n) {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().split("T")[0];
+}
+
+function localToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function toPayload(f) {
+  return {
+    name: f.name.trim(),
+    description: f.description,
+    start_date: f.start_date,
+    end_date: f.end_date,
+    evaluation_time: f.evaluation_time,
+    classification_schema: f.classification_schema.map(s =>
+      s.type === "range"
+        ? { field: s.field.trim(), type: "range", min: s.min, max: s.max }
+        : { field: s.field.trim(), type: "boolean" }
+    ),
+  };
+}
+
+function validateForm(f) {
+  if (!f.name.trim()) return "Name must not be empty";
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(f.evaluation_time || "")) return "Evaluation time must be HH:MM";
+  if (f.end_date < f.start_date) return "End date must not be before start date";
+  const names = f.classification_schema.map(s => s.field.trim());
+  if (names.length === 0) return "At least one output field is required";
+  if (names.some(n => !n)) return "Field names must not be empty";
+  if (new Set(names).size !== names.length) return "Duplicate field names in the output format";
+  for (const s of f.classification_schema) {
+    if (s.type !== "range") continue;
+    if (!Number.isInteger(s.min) || !Number.isInteger(s.max)) return `Range field '${s.field}' needs min and max`;
+    if (s.min >= s.max) return `Range field '${s.field}': min must be < max`;
+  }
+  return null;
+}
+
 export default function AdminChallengeForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEdit = Boolean(id);
 
-  const [loading, setLoading] = useState(isEdit);
+  const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [trainingFile, setTrainingFile] = useState(null);
   const [testFile, setTestFile] = useState(null);
   const [previewTestCount, setPreviewTestCount] = useState(null);
   const [initialCount, setInitialCount] = useState(0);
+  const [saving, setSaving] = useState(false);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = localToday();
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    start_date: today,
+    start_date: "",
     end_date: "",
     evaluation_time: "20:00",
     classification_schema: [{ field: "", type: "boolean" }],
   });
-
+  const [blockedRanges, setBlockedRanges] = useState([]);
+  
   useEffect(() => {
-    if (isEdit) {
-      api.getCompetitions().then(comps => {
-        const comp = comps.find(c => c.id === parseInt(id));
+    api.getCompetitions().then(comps => {
+      const others = comps.filter(c => c.id !== parseInt(id, 10));
+      const relevant = others.filter(c => c.end_date >= today);   // ended ones block nothing
+      setBlockedRanges(relevant.map(c => ({ name: c.name, start: c.start_date, end: c.end_date })));
+
+      if (isEdit) {
+        const comp = comps.find(c => c.id === parseInt(id, 10));
         if (comp) {
           setFormData({
-            ...comp,
-            classification_schema: comp.classification_schema || []
+            name: comp.name, description: comp.description,
+            start_date: comp.start_date, end_date: comp.end_date,
+            evaluation_time: comp.evaluation_time,
+            classification_schema: comp.classification_schema || [],
           });
           setInitialCount(comp.test_data_count || 0);
         } else {
           setMsg({ text: "Challenge not found", type: "error" });
         }
-        setLoading(false);
-      }).catch(err => {
-        console.error(err);
-        setMsg({ text: "Error loading challenge", type: "error" });
-        setLoading(false);
-      });
-    }
+      } else {
+        const lastEnd = relevant.reduce((m, c) => (c.end_date > m ? c.end_date : m), "");
+        const next = lastEnd ? addDays(lastEnd, 1) : today;
+        setFormData(f => ({ ...f, start_date: next }));
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setMsg({ text: "Error loading challenges", type: "error" });
+      setLoading(false);
+    });
   }, [id, isEdit]);
 
   async function handleTestFileChange(e) {
@@ -75,9 +129,10 @@ export default function AdminChallengeForm() {
     const count = fileCount !== null ? fileCount : initialCount;
     if (!count || !comp?.start_date || !comp?.end_date) return null;
     
-    const start = new Date(comp.start_date);
-    const end = new Date(comp.end_date);
-    const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+    const start = new Date(`${comp.start_date}T00:00:00Z`);
+    const end = new Date(`${comp.end_date}T00:00:00Z`);
+    const days = Math.round((end - start) / 86400000) + 1;   // inclusive
+    if (days < 1) return null;
     const perDay = Math.ceil(count / days);
     
     return { count, days, perDay };
@@ -89,7 +144,9 @@ export default function AdminChallengeForm() {
 
   function updateSchemaField(index, key, value) {
     const newSchema = [...formData.classification_schema];
-    newSchema[index] = { ...newSchema[index], [key]: value };
+    const next = { ...newSchema[index], [key]: value };
+    if (key === "type" && value !== "range") { delete next.min; delete next.max; }
+    newSchema[index] = next;
     setFormData({ ...formData, classification_schema: newSchema });
   }
 
@@ -107,23 +164,39 @@ export default function AdminChallengeForm() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    const err = validateForm(formData);
+    if (err) { setMsg({ text: err, type: "error" }); return; }
+
     setMsg({ text: "Saving...", type: "info" });
+    setSaving(true);
+
+    let savedComp;
+    try {
+      savedComp = isEdit
+        ? await api.adminUpdateCompetition(id, toPayload(formData))
+        : await api.adminCreateCompetition(toPayload(formData));
+    } catch (err) {
+      setSaving(false);
+      setMsg({ text: err.message || "An error occurred", type: "error" });
+      return;
+    }
 
     try {
-      let savedComp;
-      if (isEdit) {
-        savedComp = await api.adminUpdateCompetition(id, formData);
-      } else {
-        savedComp = await api.adminCreateCompetition(formData);
-      }
       if (trainingFile) await api.adminUploadTraining(savedComp.id, trainingFile);
       if (testFile) await api.adminUploadTest(savedComp.id, testFile);
-
-      setMsg({ text: "Saved successfully!", type: "success" });
-      setTimeout(() => navigate("/admin/challenges"), 1500);
     } catch (err) {
-      setMsg({ text: err.message || "An error occurred", type: "error" });
+      setSaving(false);
+      setMsg({
+        text: `Challenge saved, but file-upload failed: ${err.message}. Please resubmit the files.`,
+        type: "error",
+      });
+      setTimeout(() => navigate(`/admin/challenges/${savedComp.id}`), 2500);
+      return;
     }
+
+    setMsg({ text: "Saved successfully!", type: "success" });
+    setTimeout(() => navigate("/admin/challenges"), 1500);
   }
 
   async function handleDelete() {
@@ -170,7 +243,8 @@ export default function AdminChallengeForm() {
             <div className="form-group">
               <label className="label">Start Date {isStarted && "(Locked)"}</label>
               <input type="date" className="input" value={formData.start_date}
-                onChange={(e) => updateField("start_date", e.target.value)} required 
+                min={isEdit ? undefined : today}
+                onChange={(e) => updateField("start_date", e.target.value)} required
                 disabled={isStarted} />
             </div>
             <div className="form-group">
@@ -179,6 +253,11 @@ export default function AdminChallengeForm() {
                 onChange={(e) => updateField("end_date", e.target.value)} required />
             </div>
           </div>
+          {blockedRanges.length > 0 && (
+            <p className="form-hint">
+              Blocked: {blockedRanges.map(r => `${r.name} (${r.start} – ${r.end})`).join(", ")}
+            </p>
+          )}
           <div className="form-group">
             <label className="label">Evaluation Time</label>
             <input type="time" className="input" value={formData.evaluation_time}
@@ -202,9 +281,15 @@ export default function AdminChallengeForm() {
                 {schema.type === "range" && (
                   <>
                     <input type="number" className="input" placeholder="Min"
-                      value={schema.min || ""} onChange={(e) => updateSchemaField(index, "min", parseInt(e.target.value))} required style={{ width: "80px" }} />
+                      value={schema.min ?? ""}
+                      onChange={(e) => updateSchemaField(index, "min",
+                        e.target.value === "" ? null : Number.parseInt(e.target.value, 10))}
+                      required style={{ width: "80px" }} />
                     <input type="number" className="input" placeholder="Max"
-                      value={schema.max || ""} onChange={(e) => updateSchemaField(index, "max", parseInt(e.target.value))} required style={{ width: "80px" }} />
+                      value={schema.max ?? ""}
+                      onChange={(e) => updateSchemaField(index, "max",
+                        e.target.value === "" ? null : Number.parseInt(e.target.value, 10))}
+                      required style={{ width: "80px" }} />
                   </>
                 )}
                 {formData.classification_schema.length > 1 && (
@@ -254,7 +339,9 @@ export default function AdminChallengeForm() {
 
           <div style={{ display: "flex", gap: "12px", marginTop: "32px", justifyContent: "flex-end" }}>
             <button type="button" className="btn btn-secondary" onClick={() => navigate("/admin/challenges")}>Cancel</button>
-            <button type="submit" className="btn btn-primary">{isEdit ? "Publish Changes" : "Publish Challenge"}</button>
+            <button type="submit" className="btn btn-primary" disabled={saving}>
+              {saving ? "Saving..." : isEdit ? "Publish Changes" : "Publish Challenge"}
+            </button>
           </div>
         </form>
       </div>
