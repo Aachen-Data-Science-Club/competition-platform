@@ -16,6 +16,7 @@ services:
     environment:
       - ENVIRONMENT=development
       - DATA_DIR=/app/data
+      - TZ=Europe/Berlin
 
   frontend:
     build:
@@ -29,3 +30,21 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+  evaluator:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adsc-evaluator
+    command: python ml/evaluator.py
+    depends_on:
+      - backend
+    volumes:
+      - ./backend:/app
+      - ./data:/app/data
+    env_file:
+      - ./backend/.env
+    environment:
+      - ENVIRONMENT=development
+      - DATA_DIR=/app/data
+      - TZ=Europe/Berlin

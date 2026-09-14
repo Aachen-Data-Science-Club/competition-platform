@@ -11,10 +11,15 @@ export default function Sidebar() {
   const [competitions, setCompetitions] = useState([]);
 
   useEffect(() => {
-    api.getActiveCompetition().then(setActiveComp).catch(() => {});
-    if (user?.is_admin) {
-      api.getCompetitions().then(setCompetitions).catch(() => {});
+    function load() {
+      api.getActiveCompetition().then(setActiveComp).catch(() => setActiveComp(null));
+      if (user?.is_admin) {
+        api.getCompetitions().then(setCompetitions).catch(() => setCompetitions([]));
+      }
     }
+    load();
+    window.addEventListener("competitions_changed", load);
+    return () => window.removeEventListener("competitions_changed", load);
   }, [user]);
 
   function handleLogout() {
