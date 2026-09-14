@@ -30,7 +30,11 @@ async function request(endpoint, options = {}) {
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(error.detail || "Request failed");
+    const d = error.detail;
+    const message = Array.isArray(d)
+      ? d.map(e => (e.msg || JSON.stringify(e)).replace(/^Value error, /, "")).join("; ")
+      : (typeof d === "string" ? d : "Request failed");
+    throw new Error(message);
   }
 
   if (response.status === 204) return null;

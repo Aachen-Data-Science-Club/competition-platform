@@ -12,4 +12,5 @@ data/test/
 .DS_Store
 *.log
 data/
+.vscode/
 #
