@@ -20,6 +20,8 @@ from api.schemas.team import TeamCreate, TeamOut, MemberOut, MemberCreate
 from api.schemas.team import TeamCreateResult, MemberCreateResult
 from api.schemas.competition import CompetitionCreate, CompetitionUpdate, CompetitionOut
 from api.config import settings
+from ml.evaluator import run_single_evaluation
+
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -358,17 +360,11 @@ def upload_test_data(
     if not comp:
         raise HTTPException(status_code=404, detail="Competition not found")
 
-    test_dir = os.path.join(settings.DATA_DIR, "test")
-    os.makedirs(test_dir, exist_ok=True)
-    file_path = os.path.join(test_dir, f"comp_{competition_id}_{file.filename}")
+    file_path = _save_zip(file, "test", competition_id)
 
-    with open(file_path, "wb") as f:
-        content = await file.read()
-        f.write(content)
-
+    count = 0
     try:
         with zipfile.ZipFile(file_path, 'r') as z:
-            count = 0
             for item in z.infolist():
                 if item.is_dir(): continue
                 if item.filename.endswith('.csv'): continue
@@ -378,8 +374,8 @@ def upload_test_data(
     except Exception:
         pass
 
+    old_path = comp.test_data_path
     comp.test_data_path = file_path
-    comp.test_data_count = count
     db.commit()
     _replace_file(old_path, file_path)
     return {"detail": "Test data uploaded", "path": file_path, "count": count}
@@ -435,3 +431,11 @@ def delete_competition(
     for path in old_files:
         _replace_file(path, None)
     return {"detail": "Competition deleted"}
+
+@router.get("/evaluate")
+def evaluate(db: Session = Depends(get_db), admin: dict = Depends(require_admin)):
+    active_comp = db.query(Competition).filter(Competition.is_active).first()
+    if not active_comp:
+        raise HTTPException(status_code=400, detail="No active competition found")
+    run_single_evaluation(db, active_comp)
+    return {"detail": "Evaluation triggered successfully"}
