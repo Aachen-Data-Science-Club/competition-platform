@@ -84,7 +84,7 @@ export default function ChallengeInformation() {
               {comp.classification_schema?.map((f, i) => (
                 <div key={i} className="challenge-format-item">
                   <span className="challenge-format-name">{f.field}</span>
-                  {f.type === "range" && f.min !== undefined && f.max !== undefined && (
+                  {f.type === "range" && f.min != null && f.max != null && (
                     <span className="challenge-format-range">({f.min} – {f.max})</span>
                   )}
                 </div>

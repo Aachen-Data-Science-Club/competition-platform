@@ -19,12 +19,9 @@ def list_competitions(db: Session = Depends(get_db)):
     return db.query(Competition).order_by(Competition.start_date.desc()).all()
 
 
-from datetime import date
-from sqlalchemy import and_
-
 @router.get("/active", response_model=CompetitionOut | None)
 def get_active_competition(db: Session = Depends(get_db)):
-    comp = db.query(Competition).filter(Competition.is_active).first()
+    comp = db.query(Competition).filter(Competition.is_active).order_by(Competition.start_date.desc()).first()
     if not comp:
         return None
     return comp

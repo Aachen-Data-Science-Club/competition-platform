@@ -84,3 +84,9 @@
   color: var(--text-secondary);
   line-height: 1.6;
 }
+
+.form-hint {
+  margin: -8px 0 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
