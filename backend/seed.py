@@ -83,7 +83,6 @@ def seed():
         start_date=date.today() - timedelta(days=10),
         end_date=date.today() + timedelta(days=20),
         evaluation_time="20:00",
-        is_active=True,
         classification_schema=[
             {"field": "brand", "type": "boolean"},
             {"field": "year", "type": "range", "min": 1900, "max": 2026},
