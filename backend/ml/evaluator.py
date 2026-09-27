@@ -2,25 +2,21 @@ import sys
 import os
 import time
 from datetime import datetime
-
 import zipfile
 import pandas as pd
-from api.models.submission import Submission
-from api.models.team import Team
-from api.models.score import DailyScore
-
-# Important to import api module
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from api.models.database import SessionLocal
-from api.models.competition import Competition
-
-from api.config import settings
-
 import io
 import onnxruntime as ort
 import numpy as np
 from PIL import Image
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from api.models.database import SessionLocal
+from api.models.competition import Competition
+from api.models.submission import Submission
+from api.models.team import Team
+from api.models.score import DailyScore
+from api.config import settings
 
 def run_single_evaluation(db, active_comp):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STARTING EVALUATION FOR: {active_comp.name}", flush=True)
@@ -34,7 +30,7 @@ def run_single_evaluation(db, active_comp):
                     break
                     
             if not csv_filename:
-                print("...labels.csv not found", flush=True)
+                print("Error: labels.csv not found", flush=True)
                 return
                 
             with z.open(csv_filename) as f:
@@ -53,7 +49,6 @@ def run_single_evaluation(db, active_comp):
             Submission.team_id == team.id,
             Submission.competition_id == active_comp.id).order_by(Submission.submitted_at.desc()).first()
 
-
         if not latest_submission:
             print(f"Team {team.name} has no submission", flush=True)
             continue
@@ -69,6 +64,7 @@ def run_single_evaluation(db, active_comp):
             
         points = 0
         total_images = 0
+        format_flag = None
 
         with zipfile.ZipFile(active_comp.test_data_path, 'r') as z:
             for file_info in z.infolist():
@@ -83,24 +79,43 @@ def run_single_evaluation(db, active_comp):
 
                 total_images += 1
                 
-                img_bytes = z.read(filename)
-                img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                img = img.resize((224, 224))
-                img_array = np.array(img).astype(np.float32) / 255.0
-                img_array = np.expand_dims(img_array, axis=0)
+                try:
+                    img_bytes = z.read(filename)
+                    img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
+                    img = img.resize((224, 224))
+                    base_img_array = np.array(img).astype(np.float32) / 255.0
+                except Exception as e:
+                    print(f"Team {team.name}: Failed to read image {pure_name}: {e}", flush=True)
+                    continue
                 
-                prediction = session.run(None, {input_name: img_array})[0]
+                prediction = None
                 
-                # Scoring
-                # prediction
-                # true_labels[pure_name]
+                if format_flag == 'CHW' or format_flag is None:
+                    try:
+                        img_array_chw = np.expand_dims(np.transpose(base_img_array, (2, 0, 1)), axis=0)
+                        prediction = session.run(None, {input_name: img_array_chw})[0]
+                        format_flag = 'CHW'
+                    except Exception as e1:
+                        if format_flag == 'CHW': 
+                            print(f"Team {team.name}: Inference error on image {pure_name}: {e1}", flush=True)
+                            break
+                        pass
+
+                print(prediction)
+                if prediction is None and (format_flag == 'HWC' or format_flag is None):
+                    try:
+                        img_array_hwc = np.expand_dims(base_img_array, axis=0)
+                        prediction = session.run(None, {input_name: img_array_hwc})[0]
+                        format_flag = 'HWC'
+                    except Exception as e2:
+                        print(f"Team {team.name}: Model shape completely incompatible with 224x224 RGB", flush=True)
+                        break
                 
-        print(f"Team {team.name} finished. Images processed: {total_images}", flush=True)
+        print(f"Team {team.name} finished. Images processed: {total_images} (Format: {format_flag})", flush=True)
 
 def run_evaluator():
     print("Evaluator started. Waiting for evaluation times...", flush=True)
 
-    # To prevent double evaluation
     last_evaluated = {}
 
     while True:
@@ -114,7 +129,7 @@ def run_evaluator():
             active_comp = db.query(Competition).filter(Competition.is_active).first()
             
             if active_comp:
-                if active_comp.evaluation_time == current_time_str or (settings.ENVIRONMENT == "development"):
+                if active_comp.evaluation_time == current_time_str:
                     if last_evaluated.get(active_comp.id) != current_date:
                         run_single_evaluation(db, active_comp)
                         last_evaluated[active_comp.id] = current_date
