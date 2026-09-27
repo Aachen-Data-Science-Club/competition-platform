@@ -91,6 +91,10 @@ export default function ChallengeInformation() {
               ))}
             </div>
           </div>
+
+          <div className="download-data-button">
+            <button type="button" className="btn-training-data">Download Training Data</button>
+          </div>
         </div>
       </div>
     </div>
