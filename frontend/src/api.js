@@ -131,5 +131,8 @@ export const api = {
     return fetch(`${API_BASE}/competitions/${compId}/training-data`, {
       headers: { Authorization: `Bearer ${token}` }
     });
+  },
+  evaluate: () => {
+    return request("/admin/evaluate")
   }
 };

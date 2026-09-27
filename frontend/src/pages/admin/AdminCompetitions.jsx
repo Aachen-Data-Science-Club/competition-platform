@@ -35,10 +35,23 @@ export default function AdminCompetitions() {
     }
   }
 
+  async function evaluate() {
+    if(!confirm("Evaluate the latest model of each team now? Note that this button is only visible in development mode")) return;
+    try {
+      await api.evaluate();
+      alert("Evaluated successfully")
+    }
+    catch(err) {
+      alert("Error evaluating")
+    }
+  }
+
   if (loading) return <div className="page-container"><p>Loading...</p></div>;
 
   const d = new Date();
   const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  const isDevelopment = import.meta.env.DEV;
 
   return (
     <div className="page-container">
@@ -53,6 +66,11 @@ export default function AdminCompetitions() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Challenge
           </button>
+          {isDevelopment && ( //Only visible in development!
+          <button className="btn btn-primary" onClick={evaluate}>
+            EVALUATE NOW
+          </button>
+          )}
         </div>
       </div>
 

@@ -2,17 +2,24 @@ import sys
 import os
 import time
 from datetime import datetime
+import zipfile
+import io
 
-# Important to import api module
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from api.models.database import SessionLocal
 from api.models.competition import Competition
+from api.models.submission import Submission
+from api.models.team import Team
+from api.models.score import DailyScore
+from api.config import settings
+
+def run_single_evaluation(db, active_comp):
+    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STARTING EVALUATION FOR: {active_comp.name}", flush=True)
 
 def run_evaluator():
     print("Evaluator started. Waiting for evaluation times...", flush=True)
 
-    # To prevent double evaluation
     last_evaluated = {}
 
     while True:
@@ -28,10 +35,7 @@ def run_evaluator():
             if active_comp:
                 if active_comp.evaluation_time == current_time_str:
                     if last_evaluated.get(active_comp.id) != current_date:
-                        print(f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] STARTING EVALUATION FOR: {active_comp.name}", flush=True)
-                        
-                        # TODO: Insert actual ML evaluation logic here
-                        
+                        run_single_evaluation(db, active_comp)
                         last_evaluated[active_comp.id] = current_date
             
             db.close()
