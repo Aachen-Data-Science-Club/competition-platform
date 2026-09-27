@@ -60,7 +60,7 @@ export default function Login() {
         </form>
 
         <p className="login-footer">
-          Don't have an access code? Contact the ADSC team.
+          Don't have an access code? Contact the ADSC team: <a href="mailto:tech@data-science-club.de">tech@data-science-club.de</a>
         </p>
       </div>
     </div>
