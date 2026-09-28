@@ -23,7 +23,8 @@ function toPayload(f) {
     start_date: f.start_date,
     end_date: f.end_date,
     evaluation_time: f.evaluation_time,
-    classification_schema: f.classification_schema.map(s =>
+    evaluation_days: f.evaluation_days,
+    required_predictions: f.required_predictions.map(s =>
       s.type === "range"
         ? { field: s.field.trim(), type: "range", min: s.min, max: s.max }
         : { field: s.field.trim(), type: "boolean" }
@@ -35,11 +36,11 @@ function validateForm(f) {
   if (!f.name.trim()) return "Name must not be empty";
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(f.evaluation_time || "")) return "Evaluation time must be HH:MM";
   if (f.end_date < f.start_date) return "End date must not be before start date";
-  const names = f.classification_schema.map(s => s.field.trim());
-  if (names.length === 0) return "At least one output field is required";
+  const names = f.required_predictions.map(s => s.field.trim());
+  if (names.length === 0) return "At least one prediction field is required";
   if (names.some(n => !n)) return "Field names must not be empty";
   if (new Set(names).size !== names.length) return "Duplicate field names in the output format";
-  for (const s of f.classification_schema) {
+  for (const s of f.required_predictions) {
     if (s.type !== "range") continue;
     if (!Number.isInteger(s.min) || !Number.isInteger(s.max)) return `Range field '${s.field}' needs min and max`;
     if (s.min >= s.max) return `Range field '${s.field}': min must be < max`;
@@ -55,9 +56,6 @@ export default function AdminChallengeForm() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState({ text: "", type: "" });
   const [trainingFile, setTrainingFile] = useState(null);
-  const [testFile, setTestFile] = useState(null);
-  const [previewTestCount, setPreviewTestCount] = useState(null);
-  const [initialCount, setInitialCount] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const today = localToday();
@@ -68,15 +66,19 @@ export default function AdminChallengeForm() {
     start_date: "",
     end_date: "",
     evaluation_time: "20:00",
-    classification_schema: [{ field: "", type: "boolean" }],
+    evaluation_days: "",
+    required_predictions: [{ field: "", type: "boolean" }],
   });
+  
+  const [dayFiles, setDayFiles] = useState({});
+
   const [blockedRanges, setBlockedRanges] = useState([]);
   const [defaultStart, setDefaultStart] = useState(today);
   
   useEffect(() => {
     api.getCompetitions().then(comps => {
       const others = comps.filter(c => c.id !== parseInt(id, 10));
-      const relevant = others.filter(c => c.end_date >= today);   // ended ones block nothing
+      const relevant = others.filter(c => c.end_date >= today);   
       setBlockedRanges(relevant.map(c => ({ name: c.name, start: c.start_date, end: c.end_date })));
 
       if (isEdit) {
@@ -86,9 +88,9 @@ export default function AdminChallengeForm() {
             name: comp.name, description: comp.description,
             start_date: comp.start_date, end_date: comp.end_date,
             evaluation_time: comp.evaluation_time,
-            classification_schema: comp.classification_schema || [],
+            evaluation_days: comp.evaluation_days || "",
+            required_predictions: comp.required_predictions || comp.classification_schema || [],
           });
-          setInitialCount(comp.test_data_count || 0);
         } else {
           setMsg({ text: "Challenge not found", type: "error" });
         }
@@ -96,19 +98,18 @@ export default function AdminChallengeForm() {
         const lastEnd = relevant.reduce((m, c) => (c.end_date > m ? c.end_date : m), "");
         const next = lastEnd ? addDays(lastEnd, 1) : today;
         setDefaultStart(next);
-        // reset everything when switching from an edit page to "New Challenge"
+        
         setFormData({
           name: "",
           description: "",
           start_date: next,
           end_date: "",
           evaluation_time: "20:00",
-          classification_schema: [{ field: "", type: "boolean" }],
+          evaluation_days: "",
+          required_predictions: [{ field: "", type: "boolean" }],
         });
         setTrainingFile(null);
-        setTestFile(null);
-        setPreviewTestCount(null);
-        setInitialCount(0);
+        setDayFiles({});
       }
       setLoading(false);
     }).catch(err => {
@@ -119,7 +120,7 @@ export default function AdminChallengeForm() {
   }, [id, isEdit, today]);
 
   function handleResetForm() {
-    if (!confirm("Are you sure you want to clear all form fields?")) return;
+    if (!window.confirm("Are you sure you want to clear all form fields?")) return;
     setFormData(prev => ({
       name: "",
       description: "",
@@ -128,45 +129,11 @@ export default function AdminChallengeForm() {
         : defaultStart,
       end_date: "",
       evaluation_time: "20:00",
-      classification_schema: [{ field: "", type: "boolean" }],
+      evaluation_days: "",
+      required_predictions: [{ field: "", type: "boolean" }],
     }));
     setTrainingFile(null);
-    setTestFile(null);
-    setPreviewTestCount(null);
-  }
-
-  async function handleTestFileChange(e) {
-    const file = e.target.files?.[0] || null;
-    setTestFile(file);
-    if (file) {
-      try {
-        const zip = new JSZip();
-        const contents = await zip.loadAsync(file);
-        let count = 0;
-        contents.forEach((relativePath, zipEntry) => {
-          if (!zipEntry.dir) count++;
-        });
-        setPreviewTestCount(count);
-      } catch (err) {
-        console.error("Error reading zip", err);
-        setPreviewTestCount(0);
-      }
-    } else {
-      setPreviewTestCount(null);
-    }
-  }
-
-  function calculateStats(comp, fileCount = null) {
-    const count = fileCount !== null ? fileCount : initialCount;
-    if (!count || !comp?.start_date || !comp?.end_date) return null;
-    
-    const start = new Date(`${comp.start_date}T00:00:00Z`);
-    const end = new Date(`${comp.end_date}T00:00:00Z`);
-    const days = Math.round((end - start) / 86400000) + 1;   // inclusive
-    if (days < 1) return null;
-    const perDay = Math.ceil(count / days);
-    
-    return { count, days, perDay };
+    setDayFiles({});
   }
 
   function updateField(key, value) {
@@ -174,23 +141,33 @@ export default function AdminChallengeForm() {
   }
 
   function updateSchemaField(index, key, value) {
-    const newSchema = [...formData.classification_schema];
+    const newSchema = [...formData.required_predictions];
     const next = { ...newSchema[index], [key]: value };
     if (key === "type" && value !== "range") { delete next.min; delete next.max; }
     newSchema[index] = next;
-    setFormData({ ...formData, classification_schema: newSchema });
+    setFormData({ ...formData, required_predictions: newSchema });
   }
 
   function addSchemaField() {
     setFormData({
       ...formData,
-      classification_schema: [...formData.classification_schema, { field: "", type: "boolean" }]
+      required_predictions: [...formData.required_predictions, { field: "", type: "boolean" }]
     });
   }
 
   function removeSchemaField(index) {
-    const newSchema = formData.classification_schema.filter((_, i) => i !== index);
-    setFormData({ ...formData, classification_schema: newSchema });
+    const newSchema = formData.required_predictions.filter((_, i) => i !== index);
+    setFormData({ ...formData, required_predictions: newSchema });
+  }
+  
+  function handleDayFileChange(dateStr, type, file) {
+    setDayFiles(prev => ({
+      ...prev,
+      [dateStr]: {
+        ...(prev[dateStr] || {}),
+        [type]: file
+      }
+    }));
   }
 
   async function handleSubmit(e) {
@@ -215,7 +192,17 @@ export default function AdminChallengeForm() {
 
     try {
       if (trainingFile) await api.adminUploadTraining(savedComp.id, trainingFile);
-      if (testFile) await api.adminUploadTest(savedComp.id, testFile);
+      
+      const dates = formData.evaluation_days.split(",").map(d => d.trim()).filter(Boolean);
+      for (const date of dates) {
+        if (dayFiles[date]?.unlabeled) {
+          await api.adminUploadDayData(savedComp.id, date, "unlabeled", dayFiles[date].unlabeled);
+        }
+        if (dayFiles[date]?.labeled) {
+          await api.adminUploadDayData(savedComp.id, date, "labeled", dayFiles[date].labeled);
+        }
+      }
+      
     } catch (err) {
       setSaving(false);
       window.dispatchEvent(new Event("competitions_changed"));
@@ -233,7 +220,7 @@ export default function AdminChallengeForm() {
   }
 
   async function handleDelete() {
-    if (!confirm("Are you sure you want to permanently delete this challenge?")) return;
+    if (!window.confirm("Are you sure you want to permanently delete this challenge?")) return;
     setMsg({ text: "Deleting...", type: "info" });
     try {
       await api.adminDeleteCompetition(id);
@@ -248,6 +235,8 @@ export default function AdminChallengeForm() {
   if (loading) return <div className="page-container"><p>Loading...</p></div>;
 
   const isStarted = isEdit && Boolean(formData.start_date) && formData.start_date <= today;
+  
+  const parsedDays = formData.evaluation_days.split(",").map(d => d.trim()).filter(Boolean);
 
   return (
     <div className="page-container">
@@ -255,7 +244,6 @@ export default function AdminChallengeForm() {
         <h1>{isEdit ? "Edit Challenge" : "New Challenge"}</h1>
         {isEdit && (
           <button className="btn btn-secondary" onClick={handleDelete} style={{ color: "var(--error)", borderColor: "var(--error)" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             Delete Challenge
           </button>
         )}
@@ -290,27 +278,34 @@ export default function AdminChallengeForm() {
           </div>
           {blockedRanges.length > 0 && (
             <p className="form-hint">
-              Blocked: {blockedRanges.map(r => `${r.name} (${r.start} – ${r.end})`).join(", ")}
+              Blocked: {blockedRanges.map(r => `${r.name} (${r.start} - ${r.end})`).join(", ")}
             </p>
           )}
-          <div className="form-group">
+          
+          <div className="form-group" style={{marginTop: "16px"}}>
             <label className="label">Evaluation Time</label>
             <input type="time" className="input" value={formData.evaluation_time}
               onChange={(e) => updateField("evaluation_time", e.target.value)} />
           </div>
+          
+          <div className="form-group" style={{marginTop: "16px"}}>
+            <label className="label">Evaluation Days (Comma separated YYYY-MM-DD)</label>
+            <input type="text" className="input" value={formData.evaluation_days} placeholder="e.g. 2026-10-01, 2026-10-05"
+              onChange={(e) => updateField("evaluation_days", e.target.value)} />
+          </div>
 
-          <div className="schema-builder">
+          <div className="schema-builder" style={{marginTop: "24px"}}>
             <div className="schema-header">
-              <label className="label">Required Output Format</label>
+              <label className="label">Required Predictions</label>
               <button type="button" className="btn btn-secondary btn-sm" onClick={addSchemaField}>+ Add Field</button>
             </div>
-            {formData.classification_schema.map((schema, index) => (
+            {formData.required_predictions.map((schema, index) => (
               <div key={index} className="schema-row">
                 <input type="text" className="input" placeholder="Field name (e.g. brand)"
                   value={schema.field} onChange={(e) => updateSchemaField(index, "field", e.target.value)} required />
                 <select className="input" value={schema.type}
                   onChange={(e) => updateSchemaField(index, "type", e.target.value)}>
-                  <option value="boolean">Boolean (0/1)</option>
+                  <option value="boolean">Boolean</option>
                   <option value="range">Range</option>
                 </select>
                 {schema.type === "range" && (
@@ -327,50 +322,46 @@ export default function AdminChallengeForm() {
                       required style={{ width: "80px" }} />
                   </>
                 )}
-                {formData.classification_schema.length > 1 && (
+                {formData.required_predictions.length > 1 && (
                   <button type="button" className="btn btn-secondary btn-icon" onClick={() => removeSchemaField(index)}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    X
                   </button>
                 )}
               </div>
             ))}
           </div>
 
-          <div className="grid-2" style={{ marginTop: "24px" }}>
-            <div className="form-group">
-              <label className="label">Training Data (.zip)</label>
-              <div className="file-upload-btn" onClick={() => document.getElementById("form-training-file").click()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                {trainingFile ? trainingFile.name : "Select file..."}
-              </div>
-              <input id="form-training-file" type="file" accept=".zip" style={{ display: "none" }}
-                onChange={(e) => setTrainingFile(e.target.files?.[0] || null)} />
+          <div className="form-group" style={{ marginTop: "24px" }}>
+            <label className="label">Training Data (.zip)</label>
+            <div className="file-upload-btn" onClick={() => document.getElementById("form-training-file").click()}>
+              {trainingFile ? trainingFile.name : "Select file..."}
             </div>
-            <div className="form-group">
-              <label className="label">Test Data (.zip)</label>
-              <div className="file-upload-btn" onClick={() => document.getElementById("form-test-file").click()}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                {testFile ? testFile.name : "Select file..."}
-              </div>
-              <input id="form-test-file" type="file" accept=".zip" style={{ display: "none" }}
-                onChange={handleTestFileChange} />
-            </div>
+            <input id="form-training-file" type="file" accept=".zip" style={{ display: "none" }}
+              onChange={(e) => setTrainingFile(e.target.files?.[0] || null)} />
           </div>
 
-          {(() => {
-            const count = previewTestCount !== null ? previewTestCount : initialCount;
-            if (count > 0) {
-              const stats = calculateStats(formData, count);
-              return stats ? (
-                <div className="test-data-stats">
-                  Total Test Data: <strong>{stats.count} files</strong>
-                  <br/>
-                  Evaluation rate: <strong>{stats.perDay} files / day</strong> (over {stats.days} days)
+          {parsedDays.length > 0 && (
+            <div style={{ marginTop: "24px", padding: "16px", background: "var(--bg-surface)", borderRadius: "8px" }}>
+              <label className="label" style={{marginBottom: "12px", display: "block"}}>Evaluation Data per Day</label>
+              {parsedDays.map(dateStr => (
+                <div key={dateStr} style={{ marginBottom: "16px", padding: "12px", border: "1px solid var(--border)", borderRadius: "6px" }}>
+                  <strong>{dateStr}</strong>
+                  <div className="grid-2" style={{ marginTop: "8px" }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="label" style={{fontSize: "0.8rem"}}>Unlabeled Data (.zip)</label>
+                      <input type="file" accept=".zip" className="input" style={{padding: "4px"}}
+                        onChange={(e) => handleDayFileChange(dateStr, "unlabeled", e.target.files?.[0] || null)} />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="label" style={{fontSize: "0.8rem"}}>Labeled Data (.zip)</label>
+                      <input type="file" accept=".zip" className="input" style={{padding: "4px"}}
+                        onChange={(e) => handleDayFileChange(dateStr, "labeled", e.target.files?.[0] || null)} />
+                    </div>
+                  </div>
                 </div>
-              ) : null;
-            }
-            return null;
-          })()}
+              ))}
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: "12px", marginTop: "32px", justifyContent: "flex-end" }}>
             <button type="button" className="btn btn-secondary" onClick={handleResetForm}>Clear Form</button>

@@ -52,7 +52,9 @@ class CompetitionOut(BaseModel):
     end_date: date
     evaluation_time: str
     is_active: bool
-    classification_schema: list[dict[str, Any]]
+    evaluation_days: str = ""
+    evaluation_datasets: dict = {}
+    required_predictions: list[dict[str, Any]]
     test_data_count: int = 0
 
     class Config:
@@ -65,7 +67,8 @@ class CompetitionCreate(BaseModel):
     start_date: date
     end_date: date
     evaluation_time: str = "20:00"
-    classification_schema: list[ClassificationField]
+    evaluation_days: str = ""
+    required_predictions: list[ClassificationField]
 
     @field_validator("evaluation_time")
     @classmethod
@@ -78,7 +81,7 @@ class CompetitionCreate(BaseModel):
             raise ValueError("Name must not be empty")
         if self.end_date < self.start_date:
             raise ValueError("End date must not be before start date")
-        _validate_schema(self.classification_schema)
+        _validate_schema(self.required_predictions)
         return self
 
 
@@ -88,7 +91,8 @@ class CompetitionUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     evaluation_time: str | None = None
-    classification_schema: list[ClassificationField] | None = None
+    evaluation_days: str | None = None
+    required_predictions: list[ClassificationField] | None = None
 
     @field_validator("name")
     @classmethod
@@ -102,7 +106,7 @@ class CompetitionUpdate(BaseModel):
     def check_time(cls, v):
         return v if v is None else _check_time(v)
 
-    @field_validator("classification_schema")
+    @field_validator("required_predictions")
     @classmethod
     def check_schema(cls, v):
         return v if v is None else _validate_schema(v)
