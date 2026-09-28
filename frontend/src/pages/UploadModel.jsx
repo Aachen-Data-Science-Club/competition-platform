@@ -8,6 +8,10 @@ export default function UploadModel() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [uploadMsg, setUploadMsg] = useState("");
+  
+  const [csvFile, setCsvFile] = useState(null);
+  const [codeFile, setCodeFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -27,16 +31,26 @@ export default function UploadModel() {
     load();
   }, []);
 
-  async function handleUpload(file) {
+  async function handleUpload() {
     if (!comp) return;
+    if (!csvFile || !codeFile) {
+      setUploadMsg("Please select both a .csv file and a .zip file");
+      setTimeout(() => setUploadMsg(""), 4000);
+      return;
+    }
+    
+    setIsSubmitting(true);
     try {
-      await api.submitModel(comp.id, file);
-      setUploadMsg("Model submitted successfully!");
+      await api.submitModel(comp.id, csvFile, codeFile);
+      setUploadMsg("Submission successful!");
+      setCsvFile(null);
+      setCodeFile(null);
       const sub = await api.getMySubmissions(comp.id);
       setSubmissions(sub);
     } catch (err) {
       setUploadMsg(err.message);
     }
+    setIsSubmitting(false);
     setTimeout(() => setUploadMsg(""), 4000);
   }
 
@@ -46,11 +60,11 @@ export default function UploadModel() {
     return (
       <div className="fade-in">
         <div className="page-header">
-          <h1>Upload Model</h1>
+          <h1>Upload Submission</h1>
         </div>
         <div className="card">
           <div className="empty-state">
-            <div className="icon">📤</div>
+            <div className="icon">ℹ️</div>
             <h3>No active competition</h3>
             <p>There is currently no competition running. Check back later!</p>
           </div>
@@ -67,16 +81,45 @@ export default function UploadModel() {
   return (
     <div className="upload-model-page fade-in">
       <div className="page-header">
-        <h1>Upload Model</h1>
+        <h1>Upload Submission</h1>
         <p>{comp.name}</p>
       </div>
 
       <div className="card">
         <div className="card-header">
-          <h2>Submit ONNX Model</h2>
+          <h2>Submit Data</h2>
           {hasSubmittedToday && <span className="tag tag-active">Submitted today</span>}
         </div>
-        <FileUpload onFileSelect={handleUpload} disabled={hasSubmittedToday} />
+        
+        <div style={{ display: "grid", gap: "20px", gridTemplateColumns: "1fr 1fr", marginBottom: "20px" }}>
+          <FileUpload 
+            onFileSelect={setCodeFile} 
+            disabled={hasSubmittedToday || isSubmitting} 
+            accept=".zip" 
+            title="Upload Code (.zip)" 
+            description="Drag & drop your code .zip here"
+            file={codeFile}
+          />
+          <FileUpload 
+            onFileSelect={setCsvFile} 
+            disabled={hasSubmittedToday || isSubmitting} 
+            accept=".csv" 
+            title="Upload Predictions (.csv)" 
+            description="Drag & drop your predictions .csv here"
+            file={csvFile}
+          />
+        </div>
+        
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button 
+            className="btn btn-primary" 
+            onClick={handleUpload} 
+            disabled={hasSubmittedToday || isSubmitting || !csvFile || !codeFile}
+          >
+            {isSubmitting ? "Uploading..." : "Submit Files"}
+          </button>
+        </div>
+
         {uploadMsg && (
           <div className={`upload-msg ${uploadMsg.includes("success") ? "success" : "error"}`}>
             {uploadMsg}

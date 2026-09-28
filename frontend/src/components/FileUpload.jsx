@@ -1,10 +1,10 @@
-export default function FileUpload({ onFileSelect, disabled = false }) {
+export default function FileUpload({ onFileSelect, disabled = false, accept = ".csv", title = "Upload File", description = "Drag & drop your file here or click to browse", file = null }) {
   function handleDrop(e) {
     e.preventDefault();
     if (disabled) return;
-    const file = e.dataTransfer?.files?.[0];
-    if (file && file.name.endsWith(".onnx")) {
-      onFileSelect?.(file);
+    const dropped = e.dataTransfer?.files?.[0];
+    if (dropped) {
+      onFileSelect?.(dropped);
     }
   }
 
@@ -12,10 +12,10 @@ export default function FileUpload({ onFileSelect, disabled = false }) {
     if (disabled) return;
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = ".onnx";
+    input.accept = accept;
     input.onchange = (e) => {
-      const file = e.target.files?.[0];
-      if (file) onFileSelect?.(file);
+      const selected = e.target.files?.[0];
+      if (selected) onFileSelect?.(selected);
     };
     input.click();
   }
@@ -28,12 +28,13 @@ export default function FileUpload({ onFileSelect, disabled = false }) {
       onClick={handleClick}
       style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : {}}
     >
-      <div className="upload-icon">📤</div>
-      <h3>Upload ONNX Model</h3>
-      <p>Drag & drop your .onnx file here or click to browse</p>
-      <p style={{ marginTop: "8px", fontSize: "12px", color: "var(--text-muted)" }}>
-        Daily limit: 1 upload per day
-      </p>
+      <div className="upload-icon">📁</div>
+      <h3>{title}</h3>
+      {file ? (
+        <p style={{ color: "var(--accent)", fontWeight: "bold" }}>{file.name}</p>
+      ) : (
+        <p>{description}</p>
+      )}
     </div>
   );
 }
