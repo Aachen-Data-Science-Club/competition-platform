@@ -15,11 +15,17 @@ class Competition(Base):
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     evaluation_time = Column(String(5), default="20:00")
-    classification_schema = Column(JSON, nullable=False)
+    required_predictions = Column(JSON, nullable=False)
+    evaluation_days = Column(String(512), default="")
+    evaluation_datasets = Column(JSON, default={})
     training_data_path = Column(String(512), default="")
     test_data_path = Column(String(512), default="")
     test_data_count = Column(Integer, default=0)
     created_at = Column(DateTime, server_default=func.now())
+
+    @property
+    def classification_schema(self):
+        return self.required_predictions
 
     @hybrid_property
     def is_active(self):

@@ -40,6 +40,7 @@ export default function ChallengeInformation() {
   }
 
   const daysLeft = Math.max(0, Math.ceil((new Date(comp.end_date) - new Date()) / 86400000));
+  const schema = comp.required_predictions || comp.classification_schema || [];
 
   return (
     <div className="challenge-info-page fade-in">
@@ -76,16 +77,20 @@ export default function ChallengeInformation() {
               <span className="challenge-detail-label">Evaluation Time</span>
               <span className="challenge-detail-value">{comp.evaluation_time}</span>
             </div>
+            <div className="challenge-detail-row">
+              <span className="challenge-detail-label">Evaluation Days</span>
+              <span className="challenge-detail-value">{comp.evaluation_days || "Not specified"}</span>
+            </div>
           </div>
 
           <div className="challenge-detail-row">
-            <span className="challenge-detail-label">Required Format</span>
+            <span className="challenge-detail-label">Required Predictions</span>
             <div className="challenge-format-list">
-              {comp.classification_schema?.map((f, i) => (
+              {schema.map((f, i) => (
                 <div key={i} className="challenge-format-item">
                   <span className="challenge-format-name">{f.field}</span>
                   {f.type === "range" && f.min != null && f.max != null && (
-                    <span className="challenge-format-range">({f.min} – {f.max})</span>
+                    <span className="challenge-format-range">({f.min} - {f.max})</span>
                   )}
                 </div>
               ))}

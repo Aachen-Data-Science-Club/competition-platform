@@ -124,6 +124,14 @@ export const api = {
       body: formData,
     });
   },
+  adminUploadDayData: (compId, evalDate, dataType, file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return request(`/admin/competitions/${compId}/upload-day-data/${evalDate}/${dataType}`, {
+      method: "POST",
+      body: formData,
+    });
+  },
   adminResetSemester: () =>
     request("/admin/reset-semester", { method: "POST" }),
   downloadTrainingData: async (compId) => {

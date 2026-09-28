@@ -248,7 +248,8 @@ def create_competition(
         start_date=body.start_date,
         end_date=body.end_date,
         evaluation_time=body.evaluation_time,
-        classification_schema=[f.model_dump() for f in body.classification_schema],
+        evaluation_days=body.evaluation_days,
+        required_predictions=[f.model_dump() for f in body.required_predictions],
     )
     db.add(comp)
     db.commit()
@@ -298,7 +299,7 @@ def update_competition(
             )
 
     for field, value in body.model_dump(exclude_unset=True).items():
-        if field == "classification_schema" and value is not None:
+        if field == "required_predictions" and value is not None:
             value = [f.model_dump() if hasattr(f, "model_dump") else f for f in value]
         setattr(comp, field, value)
 
@@ -379,6 +380,39 @@ def upload_test_data(
     db.commit()
     _replace_file(old_path, file_path)
     return {"detail": "Test data uploaded", "path": file_path, "count": count}
+
+@router.post("/competitions/{competition_id}/upload-day-data/{eval_date}/{data_type}")
+def upload_day_data(
+    competition_id: int,
+    eval_date: str,
+    data_type: str,
+    file: UploadFile = File(...),
+    admin: dict = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    comp = db.query(Competition).filter(Competition.id == competition_id).first()
+    if not comp:
+        raise HTTPException(status_code=404, detail="Competition not found")
+        
+    if data_type not in ["labeled", "unlabeled"]:
+        raise HTTPException(status_code=400, detail="data_type must be labeled or unlabeled")
+
+    file_path = _save_zip(file, f"day_{data_type}_{eval_date}", competition_id)
+
+    datasets = dict(comp.evaluation_datasets or {})
+    if eval_date not in datasets:
+        datasets[eval_date] = {}
+    
+    old_path = datasets[eval_date].get(data_type)
+    datasets[eval_date][data_type] = file_path
+    
+    comp.evaluation_datasets = datasets
+    from sqlalchemy.orm.attributes import flag_modified
+    flag_modified(comp, "evaluation_datasets")
+    
+    db.commit()
+    _replace_file(old_path, file_path)
+    return {"detail": "Data uploaded", "path": file_path}
 
 
 @router.post("/reset-semester")
