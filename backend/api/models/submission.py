@@ -10,4 +10,5 @@ class Submission(Base):
     team_id = Column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
     competition_id = Column(Integer, ForeignKey("competitions.id", ondelete="CASCADE"), nullable=False)
     file_path = Column(String(512), nullable=False)
+    code_path = Column(String(512), nullable=True)
     submitted_at = Column(DateTime, server_default=func.now())
