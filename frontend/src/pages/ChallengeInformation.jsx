@@ -6,6 +6,24 @@ export default function ChallengeInformation() {
   const [comp, setComp] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  async function handleDownloadTraining() {
+    if (!comp) return;
+    try {
+      const response = await api.downloadTrainingData(comp.id);
+      if (!response.ok) throw new Error("Training data not available");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${comp.name}_training_data.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(err.message);
+    }
+  }
+
   useEffect(() => {
     async function load() {
       try {
@@ -98,7 +116,13 @@ export default function ChallengeInformation() {
           </div>
 
           <div className="download-data-button">
-            <button type="button" className="btn-training-data">Download Training Data</button>
+            <button 
+              type="button" 
+              className="btn-training-data" 
+              onClick={handleDownloadTraining}
+            >
+              Download Training Data
+            </button>
           </div>
         </div>
       </div>
