@@ -17,7 +17,12 @@ from api.routes import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    # Run Alembic migrations automatically on startup
+    from alembic import command
+    from alembic.config import Config
+    import os
+    alembic_cfg = Config(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alembic.ini"))
+    command.upgrade(alembic_cfg, "head")
     yield
 
 
