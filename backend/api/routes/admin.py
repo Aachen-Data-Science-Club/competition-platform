@@ -473,3 +473,25 @@ def evaluate(db: Session = Depends(get_db), admin: dict = Depends(require_admin)
         raise HTTPException(status_code=400, detail="No active competition found")
     run_single_evaluation(db, active_comp)
     return {"detail": "Evaluation triggered successfully"}
+
+from api.models.submission import Submission
+from fastapi.responses import FileResponse
+import os
+
+@router.get("/teams/{team_id}/submissions")
+def get_team_submissions(
+    team_id: int, admin: dict = Depends(require_admin), db: Session = Depends(get_db)
+):
+    submissions = db.query(Submission).filter(Submission.team_id == team_id).order_by(Submission.submitted_at.desc()).all()
+    return [{"id": s.id, "submitted_at": s.submitted_at, "competition_id": s.competition_id, "has_code": bool(s.code_path and os.path.exists(s.code_path))} for s in submissions]
+
+@router.get("/submissions/{submission_id}/code")
+def download_submission_code(
+    submission_id: int, admin: dict = Depends(require_admin), db: Session = Depends(get_db)
+):
+    sub = db.query(Submission).filter(Submission.id == submission_id).first()
+    if not sub:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    if not sub.code_path or not os.path.exists(sub.code_path):
+        raise HTTPException(status_code=404, detail="Code file not found")
+    return FileResponse(sub.code_path, media_type="application/zip", filename=os.path.basename(sub.code_path))

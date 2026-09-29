@@ -109,6 +109,15 @@ export const api = {
     }),
   adminDeleteCompetition: (id) =>
     request(`/admin/competitions/${id}`, { method: "DELETE" }),
+  adminGetTeamSubmissions: (teamId) => 
+    request(`/admin/teams/${teamId}/submissions`),
+  adminDownloadSubmissionCode: async (submissionId) => {
+    const token = localStorage.getItem("adsc_token");
+    const res = await fetch(`${API_BASE}/admin/submissions/${submissionId}/code`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    return res;
+  },
   adminUploadTraining: (compId, file) => {
     const formData = new FormData();
     formData.append("file", file);
