@@ -68,7 +68,13 @@ p.challenge-detail-value {
   color: var(--text-muted);
 }
 
-.btn-training-data {
+.download-data-button {
+  display: flex;
+  gap: 16px; 
+  margin-top: 26px;
+}
+
+.btn-training-data, .btn-test-data{
   font-size: 15px;
   font-family: inherit; 
   color: white;
@@ -78,3 +84,4 @@ p.challenge-detail-value {
   padding: 12px 24px; 
   cursor: pointer; 
 }
+
