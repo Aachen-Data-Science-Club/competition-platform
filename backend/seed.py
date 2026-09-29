@@ -1,6 +1,6 @@
 import secrets
 from datetime import date, timedelta
-from api.models.database import engine, SessionLocal
+from api.models.database import engine, SessionLocal, migrate_legacy_schema
 from api.models import Base, Team, Member, Competition, DailyScore, Submission
 
 
@@ -9,6 +9,7 @@ def generate_code(team_name):
 
 
 def seed():
+    migrate_legacy_schema(engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
 
@@ -83,7 +84,7 @@ def seed():
         start_date=date.today() - timedelta(days=10),
         end_date=date.today() + timedelta(days=20),
         evaluation_time="20:00",
-        classification_schema=[
+        required_predictions=[
             {"field": "brand", "type": "boolean"},
             {"field": "year", "type": "range", "min": 1900, "max": 2026},
         ],
