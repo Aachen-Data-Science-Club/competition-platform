@@ -48,8 +48,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <span className="logo-a">A</span>
-        <span className="logo-text">DSC</span>
+        <img src="/logo.png" alt="ADSC Logo" style={{ height: "32px", display: "block", maxWidth: "100%", objectFit: "contain" }} />
       </div>
 
       <nav className="sidebar-nav">

@@ -32,9 +32,8 @@ export default function Login() {
     <div className="login-page">
       <div className="login-bg-pattern" />
       <div className="login-container fade-in">
-        <div className="login-logo">
-          <span className="logo-a">A</span>
-          <span className="logo-text">DSC</span>
+        <div className="login-logo" style={{ display: "flex", justifyContent: "center" }}>
+          <img src="/logo.png" alt="ADSC Logo" style={{ height: "48px", objectFit: "contain" }} />
         </div>
         <h1>Competition Platform</h1>
         <p className="login-subtitle">Enter your access code to continue</p>
