@@ -14,6 +14,7 @@ export default function AdminTeams() {
   const [codesModal, setCodesModal] = useState(null);
   const [addMemberFor, setAddMemberFor] = useState(null);
   const [newMember, setNewMember] = useState({ name: "", email: "" });
+  const [teamSubmissions, setTeamSubmissions] = useState({});
 
   useEffect(() => { loadTeams(); }, []);
 
@@ -28,45 +29,97 @@ export default function AdminTeams() {
     }
   }
 
-  function showMsg(text, type = "success") {
+  function showMsg(text, type) {
     setMsg({ text, type });
-    setTimeout(() => setMsg({ text: "", type: "" }), 4000);
+    setTimeout(() => setMsg({ text: "", type: "" }), 3000);
   }
 
-  function addMemberField() {
-    setNewTeam(prev => ({
-      ...prev,
-      members: [...prev.members, { name: "", email: "" }],
-    }));
-  }
-
-  function updateMemberField(idx, field, value) {
-    setNewTeam(prev => ({
-      ...prev,
-      members: prev.members.map((m, i) => i === idx ? { ...m, [field]: value } : m),
-    }));
-  }
-
-  function removeMemberField(idx) {
-    setNewTeam(prev => ({
-      ...prev,
-      members: prev.members.filter((_, i) => i !== idx),
-    }));
+  async function handleExpandTeam(teamId) {
+    if (expandedTeam === teamId) {
+      setExpandedTeam(null);
+      return;
+    }
+    setExpandedTeam(teamId);
+    try {
+      const subs = await api.adminGetTeamSubmissions(teamId);
+      setTeamSubmissions(prev => ({ ...prev, [teamId]: subs }));
+    } catch (err) {
+      console.error("Failed to load submissions for team", err);
+    }
   }
 
   async function handleCreate(e) {
     e.preventDefault();
     try {
-      const result = await api.adminCreateTeam(newTeam);
+      await api.adminCreateTeam(newTeam);
       setShowCreate(false);
       setNewTeam({ name: "", members: [{ name: "", email: "" }] });
       await loadTeams();
-      setCodesModal({ title: "New Team Access Codes", codes: result.codes });
-      const failed = result.email_failures ?? [];
+      showMsg("Team created successfully!", "success");
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  function addMemberField() {
+    setNewTeam(prev => ({
+      ...prev,
+      members: [...prev.members, { name: "", email: "" }]
+    }));
+  }
+
+  function updateMemberField(index, field, value) {
+    const newMembers = [...newTeam.members];
+    newMembers[index][field] = value;
+    setNewTeam(prev => ({ ...prev, members: newMembers }));
+  }
+
+  function removeMemberField(index) {
+    const newMembers = newTeam.members.filter((_, i) => i !== index);
+    setNewTeam(prev => ({ ...prev, members: newMembers }));
+  }
+
+  async function handleDelete(teamId, teamName) {
+    if (!confirm(`Are you sure you want to completely delete team "${teamName}"?`)) return;
+    try {
+      await api.adminDeleteTeam(teamId);
+      await loadTeams();
+      showMsg("Team deleted.", "success");
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  async function handleKickMember(memberId, memberName) {
+    if (!confirm(`Are you sure you want to remove member "${memberName}"?`)) return;
+    try {
+      await api.adminKickMember(memberId);
+      await loadTeams();
+      showMsg("Member removed.", "success");
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  async function handleGenerateCodes(teamId) {
+    if (!confirm("This will invalidate old codes for all active members in this team and generate new ones. Send emails?")) return;
+    try {
+      const result = await api.adminGenerateCodes(teamId);
+      await loadTeams();
+      setCodesModal({ title: "New Access Codes", codes: result.codes });
+      showMsg("Codes regenerated.", "success");
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  async function handleSendCodes(teamId) {
+    if (!confirm("Send current active access codes to all team members?")) return;
+    try {
+      const result = await api.adminSendCodes(teamId);
+      const { failed, sent_count } = result;
       showMsg(
-        failed.length
-          ? `Team created, but codes could not be emailed to: ${failed.join(", ")}`
-          : `Team created and codes emailed to ${result.emails_sent} member(s)`,
+        failed.length ? `Sent ${sent_count}. Failed: ${failed.join(", ")}` : `Sent codes to ${sent_count} members.`,
         failed.length ? "error" : "success"
       );
     } catch (err) {
@@ -84,62 +137,6 @@ export default function AdminTeams() {
     }
   }
 
-  async function handleDelete(teamId, teamName) {
-    if (!confirm(`Delete team "${teamName}" and all its data?`)) return;
-    try {
-      await api.adminDeleteTeam(teamId);
-      await loadTeams();
-      showMsg("Team deleted");
-    } catch (err) {
-      showMsg(err.message, "error");
-    }
-  }
-
-  async function handleKickMember(memberId, memberName) {
-    if (!confirm(`Deactivate ${memberName}?`)) return;
-    try {
-      await api.adminKickMember(memberId);
-      await loadTeams();
-      showMsg(`${memberName} deactivated`);
-    } catch (err) {
-      showMsg(err.message, "error");
-    }
-  }
-
-  async function handleSendCodes(teamId) {
-    try {
-      const result = await api.adminSendCodes(teamId);
-      setCodesModal({ title: "Access Codes Sent", codes: result.codes });
-      const failed = result.email_failures ?? [];
-      showMsg(
-        failed.length
-          ? `Codes sent, but ${failed.length} email(s) failed: ${failed.join(", ")}`
-          : `Codes sent to ${result.emails_sent} member(s)`,
-        failed.length ? "error" : "success"
-      );
-    } catch (err) {
-      showMsg(err.message, "error");
-    }
-  }
-
-  async function handleGenerateCodes(teamId) {
-    if (!confirm("This replaces every access code in this team. " +
-      "Members using their current code will be locked out. Continue?")) return;
-    try {
-      const result = await api.adminGenerateCodes(teamId);
-      setCodesModal({ title: "New Access Codes", codes: result.codes });
-      const failed = result.email_failures ?? [];
-      showMsg(
-        failed.length
-          ? `Codes regenerated, but ${failed.length} email(s) failed: ${failed.join(", ")}`
-          : `Codes regenerated and emailed to ${result.emails_sent} member(s)`,
-        failed.length ? "error" : "success"
-      );
-    } catch (err) {
-      showMsg(err.message, "error");
-    }
-  }
-
   async function handleAddMember(e) {
     e.preventDefault();
     try {
@@ -152,6 +149,22 @@ export default function AdminTeams() {
         result.email_sent ? "Member added and code emailed" : "Member added, but the code email failed",
         result.email_sent ? "success" : "error"
       );
+    } catch (err) {
+      showMsg(err.message, "error");
+    }
+  }
+
+  async function handleDownloadCode(subId, dateStr) {
+    try {
+      const response = await api.adminDownloadSubmissionCode(subId);
+      if (!response.ok) throw new Error("Code file not available");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `submission_${subId}_code_${dateStr.split('T')[0]}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (err) {
       showMsg(err.message, "error");
     }
@@ -208,7 +221,7 @@ export default function AdminTeams() {
               />
               {newTeam.members.length > 1 && (
                 <button type="button" className="btn btn-danger btn-icon" onClick={() => removeMemberField(i)}>
-                  ✕
+                  🗑️
                 </button>
               )}
             </div>
@@ -273,13 +286,13 @@ export default function AdminTeams() {
       <div className="teams-list">
         {teams.map((team) => (
           <div key={team.id} className="card team-card">
-            <div className="team-card-header" onClick={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}>
+            <div className="team-card-header" onClick={() => handleExpandTeam(team.id)}>
               <div className="team-card-info">
                 <div className="team-card-avatar">{team.name[0]}</div>
                 <div>
                   <h3>{team.name}</h3>
                   <span className="team-card-meta">
-                    {team.members.filter(m => m.is_active).length} active members · {team.total_points.toLocaleString()} pts
+                    {team.members.filter(m => m.is_active).length} active members • {team.total_points.toLocaleString()} pts
                   </span>
                 </div>
               </div>
@@ -305,6 +318,7 @@ export default function AdminTeams() {
 
             {expandedTeam === team.id && (
               <div className="team-members-expanded">
+                <h4 style={{ margin: "0 0 10px 0", color: "var(--text-secondary)" }}>Members</h4>
                 {team.members.map((member) => (
                   <div key={member.id} className={`member-row ${!member.is_active ? "inactive" : ""}`}>
                     <div className="member-info">
@@ -324,6 +338,34 @@ export default function AdminTeams() {
                     )}
                   </div>
                 ))}
+                
+                <h4 style={{ margin: "20px 0 10px 0", color: "var(--text-secondary)" }}>Submissions</h4>
+                {!teamSubmissions[team.id] ? (
+                  <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>Loading submissions...</div>
+                ) : teamSubmissions[team.id].length === 0 ? (
+                  <div style={{ color: "var(--text-muted)", fontSize: "0.9rem" }}>No submissions found.</div>
+                ) : (
+                  teamSubmissions[team.id].map(sub => (
+                    <div key={sub.id} className="member-row" style={{ padding: "8px 12px", background: "var(--bg-primary)" }}>
+                      <div className="member-info">
+                        <div>
+                          <div className="member-name">Submission #{sub.id}</div>
+                          <div className="member-email">{new Date(sub.submitted_at).toLocaleString("de-DE")}</div>
+                        </div>
+                      </div>
+                      {sub.has_code ? (
+                        <button 
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleDownloadCode(sub.id, sub.submitted_at)}
+                        >
+                          Download Code
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>No code attached</span>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
