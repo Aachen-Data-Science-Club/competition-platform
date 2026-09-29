@@ -150,6 +150,21 @@ export const api = {
       headers: { Authorization: `Bearer ${token}` }
     });
   },
+
+  downloadTestData: async (compId, evalDate) => {
+    const token = localStorage.getItem("adsc_token");
+    return fetch(`${API_BASE}/competitions/${compId}/test-data/${evalDate}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
+  downloadNextTestData: async (compId) => {
+    const token = localStorage.getItem("adsc_token");
+    return fetch(`${API_BASE}/competitions/${compId}/test-data/next`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  },
+
   evaluate: () => {
     return request("/admin/evaluate")
   }

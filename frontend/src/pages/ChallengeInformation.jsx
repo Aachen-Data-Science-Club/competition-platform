@@ -5,22 +5,33 @@ import "./ChallengeInformation.css";
 export default function ChallengeInformation() {
   const [comp, setComp] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingTestData, setDownloadingTestData] = useState(false);
+  const [downloadError, setDownloadError] = useState("");
 
-  async function handleDownloadTraining() {
-    if (!comp) return;
+  async function downloadNextTestData() {
+    setDownloadingTestData(true);
+    setDownloadError("");
     try {
-      const response = await api.downloadTrainingData(comp.id);
-      if (!response.ok) throw new Error("Training data not available");
+      const response = await api.downloadNextTestData(comp.id);
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.detail || "Unable to download test data");
+      }
+
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${comp.name}_training_data.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = response.headers.get("content-disposition")?.match(/filename="?([^";]+)"?/i)?.[1]
+        || `${comp.name}_test_data.zip`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      console.error(err);
-      alert(err.message);
+      setDownloadError(err.message || "Unable to download test data");
+    } finally {
+      setDownloadingTestData(false);
     }
   }
 
@@ -116,14 +127,12 @@ export default function ChallengeInformation() {
           </div>
 
           <div className="download-data-button">
-            <button 
-              type="button" 
-              className="btn-training-data" 
-              onClick={handleDownloadTraining}
-            >
-              Download Training Data
+            <button type="button" className="btn-training-data">Download Training Data</button>
+            <button type="button" className="btn-test-data" onClick={downloadNextTestData} disabled={downloadingTestData}>
+              {downloadingTestData ? "Downloading..." : "Download Test Data"}
             </button>
           </div>
+          {downloadError && <p role="alert">{downloadError}</p>}
         </div>
       </div>
     </div>
