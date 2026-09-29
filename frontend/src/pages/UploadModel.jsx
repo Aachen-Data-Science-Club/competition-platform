@@ -12,6 +12,7 @@ export default function UploadModel() {
   const [csvFile, setCsvFile] = useState(null);
   const [codeFile, setCodeFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aiChecked, setAiChecked] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -45,6 +46,7 @@ export default function UploadModel() {
       setUploadMsg("Submission successful!");
       setCsvFile(null);
       setCodeFile(null);
+      setAiChecked(false);
       const sub = await api.getMySubmissions(comp.id);
       setSubmissions(sub);
     } catch (err) {
@@ -110,11 +112,20 @@ export default function UploadModel() {
           />
         </div>
         
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "12px" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", fontSize: "0.9rem" }}>
+            <input 
+              type="checkbox" 
+              checked={aiChecked} 
+              onChange={(e) => setAiChecked(e.target.checked)}
+              disabled={hasSubmittedToday || isSubmitting}
+            />
+            I hereby confirm that I did not use the help of AI for this submission.
+          </label>
           <button 
             className="btn btn-primary" 
             onClick={handleUpload} 
-            disabled={hasSubmittedToday || isSubmitting || !csvFile || !codeFile}
+            disabled={hasSubmittedToday || isSubmitting || !csvFile || !codeFile || !aiChecked}
           >
             {isSubmitting ? "Uploading..." : "Submit Files"}
           </button>

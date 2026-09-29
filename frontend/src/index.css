@@ -159,6 +159,12 @@ input, textarea, select {
   border: 1px solid transparent;
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .btn-primary {
   background: var(--accent);
   color: white;
