@@ -80,3 +80,4 @@ def get_my_submissions(
         Submission.team_id == current_user["team_id"],
         Submission.competition_id == competition_id,
     ).order_by(Submission.submitted_at.desc()).all()
+
