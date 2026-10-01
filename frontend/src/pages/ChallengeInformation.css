@@ -71,7 +71,6 @@ p.challenge-detail-value {
 .download-data-button {
   display: flex;
   gap: 16px; 
-  margin-top: 26px;
 }
 
 .btn-training-data, .btn-test-data{
@@ -85,3 +84,8 @@ p.challenge-detail-value {
   cursor: pointer; 
 }
 
+.data-agreement-button{
+  font-size:small; 
+  margin-bottom:10px;
+  color:var(--text-secondary);
+}

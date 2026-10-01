@@ -8,8 +8,13 @@ export default function ChallengeInformation() {
   const [downloadingTrainingData, setDownloadingTrainingData] = useState(false);
   const [downloadingTestData, setDownloadingTestData] = useState(false);
   const [downloadError, setDownloadError] = useState("");
+  const [isAgreed, setIsAgreed] = useState(false);
 
   async function downloadTrainingData() {
+    if(!isAgreed){
+      alert("Please agree to the terms before downloading any data!");
+      return; 
+    }
     setDownloadingTrainingData(true);
     setDownloadError("");
     try {
@@ -37,6 +42,10 @@ export default function ChallengeInformation() {
   }
 
   async function downloadNextTestData() {
+    if(!isAgreed){
+      alert("Please agree to the terms before downloading any data!");
+      return; 
+    }
     setDownloadingTestData(true);
     setDownloadError("");
     try {
@@ -98,6 +107,7 @@ export default function ChallengeInformation() {
 
   const daysLeft = Math.max(0, Math.ceil((new Date(comp.end_date) - new Date()) / 86400000));
   const schema = comp.required_predictions || comp.classification_schema || [];
+  
 
   return (
     <div className="challenge-info-page fade-in">
@@ -153,7 +163,14 @@ export default function ChallengeInformation() {
               ))}
             </div>
           </div>
-
+          <div className="data-agreement-button">
+            <input type="checkbox" id="agreement-button" 
+            checked={isAgreed} 
+            onChange={(e) => setIsAgreed(e.target.checked)}>
+            </input>
+            <label htmlFor="agreement-button"> I agree to use the provided data exclusively for the purposes of this challenge.</label>
+            
+          </div>
           <div className="download-data-button">
             <button type="button" className="btn-training-data" onClick={downloadTrainingData} disabled={downloadingTrainingData}>
               {downloadingTrainingData ? "Downloading..." : "Download Training Data"}
