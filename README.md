@@ -1,77 +1,74 @@
 # ADSC Competition Platform
 
-Die offizielle Data Science Competition Plattform für den [Aachen Data Science Club](https://data-science-club.de/).
+The official Data Science Competition Platform for the [Aachen Data Science Club](https://data-science-club.de/).
 
-Diese Plattform ermöglicht es dem Verein, Machine Learning Wettbewerbe auszurichten. Teilnehmerteams laden trainierte neuronale Netze (als `.onnx` Dateien) hoch. Ein im Hintergrund laufender Evaluator führt diese Modelle täglich gegen einen geheimen Testdatensatz aus und generiert ein Leaderboard.
+This platform enables the club to host flexible, Kaggle-style machine learning competitions. Participating teams train their models locally and upload their predictions as `submission.csv` files along with their code. A background evaluator compares these predictions daily against a hidden solution dataset and updates the live leaderboard.
 
-## 🚀 Architektur
+## 🚀 Architecture
 
-Die Plattform besteht aus drei Hauptkomponenten (Microservices), die über Docker orchestriert werden:
+The platform consists of three main microservices orchestrated via Docker:
 
 1. **Frontend:** React + Vite (Port 80)
 2. **Backend:** FastAPI + SQLite (Port 8000)
-3. **ML Evaluator:** Ein Python-Hintergrundprozess (Daemon), der die ONNX-Modelle der Teilnehmer automatisch skaliert, testet und bewertet.
+3. **ML Evaluator:** A Python background daemon that automatically evaluates the uploaded CSV files against the solution data.
 
 ---
 
-## 🧠 Machine Learning & Evaluierung
+## 🧠 Evaluation (The Kaggle Approach)
 
-Die Plattform ist aktuell primär für **Image Classification** ausgelegt. 
+The platform is highly flexible and can be used for Image Classification, Object Detection, NLP, or Time Series analysis. The server does not execute any heavy models; it strictly compares `.csv` prediction files.
 
-### Regeln für Admins (Testdaten)
-Wenn du als Admin Testdaten hochlädst, muss die hochgeladene `.zip` Datei zwei Dinge enthalten:
-1. Eine Datei, deren Name auf `labels.csv` endet.
-2. Die Bilder (Ordnerstruktur ist egal, die Plattform findet sie automatisch).
+### Rules for Admins (Test Data)
+When uploading test data for a challenge, the `.zip` file must contain a CSV file holding the ground truth (the correct solutions).
+- The CSV must contain an ID column (e.g., `filename`).
+- The backend matches the rows of this column 1:1 against the participants' submissions.
 
-**Wichtig:** Die `labels.csv` muss eine Spalte namens `filename` haben. In der Spalte für die Lösung *müssen* numerische Klassen-IDs stehen (z.B. `0` für Hund, `1` für Katze), da das Backend `np.argmax()` auf die Ausgabe der ONNX-Modelle anwendet.
-
-### Regeln für Teilnehmer (ONNX Modelle)
-- Das Modell muss als `.onnx` Datei vorliegen.
-- Der Evaluator skaliert alle Bilder automatisch auf **224x224 RGB**.
-- Das System besitzt eine Auto-Erkennung: Es unterstützt sowohl das PyTorch-Format (`CHW`: Channels, Height, Width) als auch das TensorFlow-Format (`HWC`: Height, Width, Channels).
+### Rules for Participants (Submissions)
+- Teams upload a `.csv` file with their predictions and a `.zip` file containing their code.
+- The `.csv` must have exactly the same column names as required by the challenge description.
+- For every exact row match, the backend automatically awards points.
 
 ---
 
-## 🛠 Server Deployment & Workflow (Produktion)
+## 🛠 Server Deployment & Workflow (Production)
 
-Die Plattform läuft als produktives Docker-Setup auf dem Vereins-Server.
+The platform runs as a production-ready Docker setup on the club's server.
 
-### 1. Update / Änderungen einspielen
-Wenn du auf deinem Laptop Code geändert und auf GitHub gepusht hast, führst du auf dem Server folgenden Workflow aus:
+### 1. Applying Updates
+Whenever you change the code locally and push to GitHub, run the following workflow on the server to update the platform:
 
 ```bash
-# 1. Den neuesten Code herunterladen
+# 1. Download the latest code
 git pull
 
-# 2. Container neu bauen und ohne Downtime starten
+# 2. Rebuild and restart containers without downtime
 sudo docker compose -f docker-compose.prod.yml up -d --build
 ```
-*Deine Datenbank (`prod_db`) und alle Uploads (`data/`) sind in Volumes gesichert und bleiben bei diesem Vorgang zu 100% erhalten!*
+*Your database (`prod_db`) and all uploads (`data/`) are stored in secure Docker volumes and remain 100% intact during this process!*
 
-### 2. Logs prüfen
-Wenn die Evaluierung fehlschlägt oder das Backend Fehler wirft:
+### 2. Checking Logs
+If the evaluation fails or the backend throws errors, check the logs:
 ```bash
 sudo docker logs -f adsc-evaluator-prod
 sudo docker logs -f adsc-backend-prod
 ```
 
-### 3. Geheimnisse (.env)
-Auf dem Server existiert eine `.env` Datei im Ordner `backend/.env`. Diese wird nicht auf GitHub gepusht! Sie enthält kritische Produktionsdaten:
+### 3. Secrets (.env)
+A `.env` file exists on the server inside the `backend/.env` folder. It is never pushed to GitHub! It contains critical production secrets:
 ```ini
 ENVIRONMENT=production
-SECRET_KEY=eine-sehr-lange-zufaellige-zeichenkette
-ADMIN_ACCESS_CODE=dein-admin-passwort
+SECRET_KEY=your-very-long-random-secret-string
+ADMIN_ACCESS_CODE=your-secure-admin-password
 CORS_ORIGINS=https://challenge.adsc.de
 ```
 
 ---
 
-## 💻 Lokale Entwicklung (Development)
+## 💻 Local Development
 
-Wenn du am Code der Plattform arbeiten willst, klone das Repo auf deinen Laptop und nutze das Development-Setup. Dieses bietet Hot-Reloading, d.h. wenn du Code speicherst, aktualisiert sich die App sofort.
+If you want to work on the codebase, clone the repository to your laptop and use the development setup. It features hot-reloading (changes are reflected immediately upon saving).
 
 ```bash
-# Erstellt Dummy-Daten und startet alle Services lokal
 docker compose up --build
 ```
-Das Frontend erreichst du unter `http://localhost:5173`, das Backend unter `http://localhost:8000`.
+The frontend will be available at `http://localhost:5173`, and the backend at `http://localhost:8000`.
