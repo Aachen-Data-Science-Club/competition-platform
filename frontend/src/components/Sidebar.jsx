@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
+import logo from "../assets/logo.png";
 import "./Sidebar.css";
 
 export default function Sidebar() {
@@ -48,7 +49,7 @@ export default function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <img src="/logo.png" alt="ADSC Logo" style={{ height: "32px", display: "block", maxWidth: "100%", objectFit: "contain" }} />
+        <img src={logo} alt="ADSC Logo" style={{ height: "32px", display: "block", maxWidth: "100%", objectFit: "contain" }} />
       </div>
 
       <nav className="sidebar-nav">
