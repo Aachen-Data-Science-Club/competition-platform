@@ -25,6 +25,16 @@ def submit_model(
         raise HTTPException(status_code=400, detail="Predictions file must be a .csv file")
     if not code_file.filename.lower().endswith(".zip"):
         raise HTTPException(status_code=400, detail="Code file must be a .zip file")
+
+    csv_file.file.seek(0, 2)
+    if csv_file.file.tell() > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="CSV file exceeds 10MB limit")
+    csv_file.file.seek(0)
+
+    code_file.file.seek(0, 2)
+    if code_file.file.tell() > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="ZIP file exceeds 50MB limit")
+    code_file.file.seek(0)
         
     comp = db.query(Competition).filter(Competition.id == competition_id).first()
     if not comp:
