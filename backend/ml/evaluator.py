@@ -16,9 +16,16 @@ from api.config import settings
 
 def run_single_evaluation(db, active_comp):
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] STARTING EVALUATION FOR: {active_comp.name}", flush=True)
+
+    evaluation_date = datetime.now().date()
+    daily_datasets = (active_comp.evaluation_datasets or {}).get(evaluation_date.isoformat(), {})
+    test_data_path = daily_datasets.get("labeled") or active_comp.test_data_path
+    if not test_data_path:
+        print(f"Error: no labeled test data configured for {evaluation_date}", flush=True)
+        return
     
     try:
-        with zipfile.ZipFile(active_comp.test_data_path, "r") as z:
+        with zipfile.ZipFile(test_data_path, "r") as z:
             csv_filename = None
             for item in z.infolist():
                 if item.filename.endswith('.csv') and '__MACOSX' not in item.filename:
@@ -82,7 +89,7 @@ def run_single_evaluation(db, active_comp):
                 competition_id=active_comp.id,
                 team_id=team.id,
                 points=points,
-                date=datetime.now().date()
+                date=evaluation_date
             )
             db.add(new_score)
             db.commit()
