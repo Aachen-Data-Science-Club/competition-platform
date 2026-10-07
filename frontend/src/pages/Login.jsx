@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../api";
+import logo from "../assets/logo.png";
 import "./Login.css";
 
 export default function Login() {
@@ -33,7 +34,7 @@ export default function Login() {
       <div className="login-bg-pattern" />
       <div className="login-container fade-in">
         <div className="login-logo" style={{ display: "flex", justifyContent: "center" }}>
-          <img src="/logo.png" alt="ADSC Logo" style={{ height: "48px", objectFit: "contain" }} />
+          <img src={logo} alt="ADSC Logo" style={{ height: "48px", objectFit: "contain" }} />
         </div>
         <h1>Competition Platform</h1>
         <p className="login-subtitle">Enter your access code to continue</p>
