@@ -57,7 +57,7 @@ services:
       - TZ=Europe/Berlin
     command: ["python", "ml/evaluator.py"]
 
-caddy:
+  caddy:
     image: caddy:latest
     container_name: adsc-caddy
     restart: unless-stopped
