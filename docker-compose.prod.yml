@@ -7,8 +7,8 @@ services:
       dockerfile: Dockerfile
     container_name: adsc-backend-prod
     restart: always
-    ports:
-      - "8000:8000"
+    #ports:
+     # - "8000:8000"
     volumes:
       # In production, we only mount the data directory, NOT the source code
       - ./data:/app/data
@@ -30,8 +30,8 @@ services:
       dockerfile: Dockerfile.prod
     container_name: adsc-frontend-prod
     restart: always
-    ports:
-      - "80:80" # Exposed on port 80 instead of 5173
+    #ports:
+     # - "80:80" # Exposed on port 80 instead of 5173
     depends_on:
       - backend
 
@@ -55,5 +55,23 @@ services:
       - TZ=Europe/Berlin
     command: ["python", "ml/evaluator.py"]
 
+caddy:
+    image: caddy:latest
+    container_name: adsc-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8000:8000"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
 volumes:
   prod_db:
+  caddy_data:
+  caddy_config:

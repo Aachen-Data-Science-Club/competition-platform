@@ -1,0 +1,7 @@
+competition.data-science-club.de, competition.data-science-club.com {
+    reverse_proxy frontend:80
+}
+
+competition.data-science-club.de:8000, competition.data-science-club.com:8000 {
+    reverse_proxy backend:8000
+}
