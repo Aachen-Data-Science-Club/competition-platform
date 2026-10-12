@@ -22,6 +22,8 @@ services:
       - DATABASE_URL=sqlite:////app/db/adsc.db
       - DATA_DIR=/app/data
       - TZ=Europe/Berlin
+      - FORWARDED_ALLOW_IPS=*
+      - CORS_ORIGINS=https://competition.data-science-club.de,https://competition.data-science-club.com
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] # No --reload in prod
 
   frontend:
@@ -62,7 +64,6 @@ caddy:
     ports:
       - "80:80"
       - "443:443"
-      - "8000:8000"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data

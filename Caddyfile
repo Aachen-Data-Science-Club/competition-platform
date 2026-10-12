@@ -1,7 +1,21 @@
 competition.data-science-club.de, competition.data-science-club.com {
-    reverse_proxy frontend:80
-}
+	handle /api* {
+		reverse_proxy backend:8000
+	}
 
-competition.data-science-club.de:8000, competition.data-science-club.com:8000 {
-    reverse_proxy backend:8000
+	handle /docs* {
+		reverse_proxy backend:8000
+	}
+
+	handle /redoc* {
+		reverse_proxy backend:8000
+	}
+
+	handle /openapi.json {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
 }
