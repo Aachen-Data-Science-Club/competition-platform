@@ -117,7 +117,7 @@ export default function AdminTeams() {
     if (!confirm("Send current active access codes to all team members?")) return;
     try {
       const result = await api.adminSendCodes(teamId);
-      const { failed, sent_count } = result;
+      const { email_failures: failed = [], emails_sent: sent_count = 0 } = result;
       showMsg(
         failed.length ? `Sent ${sent_count}. Failed: ${failed.join(", ")}` : `Sent codes to ${sent_count} members.`,
         failed.length ? "error" : "success"
