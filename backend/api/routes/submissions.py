@@ -27,8 +27,8 @@ def submit_model(
         raise HTTPException(status_code=400, detail="Code file must be a .zip file")
 
     csv_file.file.seek(0, 2)
-    if csv_file.file.tell() > 10 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="CSV file exceeds 10MB limit")
+    if csv_file.file.tell() > 50 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="CSV file exceeds 50MB limit")
     csv_file.file.seek(0)
 
     code_file.file.seek(0, 2)

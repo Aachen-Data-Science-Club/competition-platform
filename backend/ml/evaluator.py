@@ -133,10 +133,11 @@ def _find_join_column(labels_df, sub_df, target_cols):
     sub_col_map = {c.strip().lower(): c for c in sub_df.columns}
     target_lower = {c.strip().lower() for c in target_cols}
 
-    if "filename" in sub_col_map and "filename" not in target_lower:
-        for c in labels_df.columns:
-            if c.strip().lower() == "filename":
-                return c, sub_col_map["filename"], True
+    for fname in ["filename", "pure_filename"]:
+        if fname in sub_col_map and fname not in target_lower:
+            for c in labels_df.columns:
+                if c.strip().lower() == fname:
+                    return c, sub_col_map[fname], True
 
     for pname in ["id", "sofifa_id"]:
         if pname in sub_col_map and pname not in target_lower:
@@ -149,13 +150,6 @@ def _find_join_column(labels_df, sub_df, target_cols):
         if c_low in target_lower or c_low not in sub_col_map:
             continue
         if c_low.endswith("_id") and labels_df[c].notna().all() and labels_df[c].is_unique:
-            return c, sub_col_map[c_low], False
-
-    for c in labels_df.columns:
-        c_low = c.strip().lower()
-        if c_low in target_lower or c_low not in sub_col_map:
-            continue
-        if labels_df[c].notna().all() and labels_df[c].is_unique:
             return c, sub_col_map[c_low], False
 
     return None, None, False

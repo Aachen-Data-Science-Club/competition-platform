@@ -79,6 +79,9 @@ export default function UploadModel() {
   const hasSubmittedToday = submissions.some(
     s => s.submitted_at.split("T")[0] === todayStr
   );
+  const requiredFields = (comp.required_predictions || comp.classification_schema || [])
+    .map(f => f.field)
+    .filter(Boolean);
 
   return (
     <div className="upload-model-page fade-in">
@@ -92,6 +95,17 @@ export default function UploadModel() {
           <h2>Submit Data</h2>
           {hasSubmittedToday && <span className="tag tag-active">Submitted today</span>}
         </div>
+
+        <p style={{ marginBottom: "16px", fontSize: "0.9rem", color: "var(--text-secondary)" }}>
+          Note: Only the required prediction columns need to be uploaded in your predictions <code>.csv</code> file
+          {requiredFields.length > 0 && (
+            <> ({requiredFields.map((col, idx) => (
+              <span key={col}>
+                <code>{col}</code>{idx < requiredFields.length - 1 ? ", " : ""}
+              </span>
+            ))})</>
+          )}.
+        </p>
         
         <div style={{ display: "grid", gap: "20px", gridTemplateColumns: "1fr 1fr", marginBottom: "20px" }}>
           <FileUpload 
@@ -107,7 +121,7 @@ export default function UploadModel() {
             disabled={hasSubmittedToday || isSubmitting} 
             accept=".csv" 
             title="Upload Predictions (.csv)" 
-            description="Drag & drop your predictions .csv here"
+            description="Drag & drop your predictions .csv here (only required prediction columns needed)"
             file={csvFile}
           />
         </div>
