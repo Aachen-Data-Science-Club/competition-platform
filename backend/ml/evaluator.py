@@ -16,7 +16,7 @@ from api.models.team import Team
 from api.models.score import DailyScore
 from api.config import settings
 
-MAX_CELL_POINTS = 10.0
+MAX_CELL_POINTS = 1.0
 
 BOOL_TRUE = {"true", "yes", "y", "t"}
 BOOL_FALSE = {"false", "no", "n", "f"}
@@ -234,32 +234,46 @@ def run_single_evaluation(db, active_comp):
                 true_records = {i: row for i, row in enumerate(label_rows)}
                 sub_records = {i: row for i, row in enumerate(sub_rows)}
 
-            total_points = 0.0
+            total_correct = 0.0
+            total_cells = 0
             total_matches = 0
-            column_points = {col: 0.0 for col in target_cols}
+            column_correct = {col: 0.0 for col in target_cols}
+            column_totals = {col: 0 for col in target_cols}
 
             for key, true_row in true_records.items():
                 sub_row = sub_records.get(key)
-                if sub_row is None:
-                    continue
-                total_matches += 1
+                if sub_row is not None:
+                    total_matches += 1
                 for col in target_cols:
                     if pd.isna(true_row[col]):
+                        continue
+                    total_cells += 1
+                    column_totals[col] += 1
+                    if sub_row is None:
                         continue
                     sub_col = sub_col_map.get(col.strip().lower())
                     if sub_col is None:
                         continue
-                    cell_pts = score_cell(sub_row[sub_col], true_row[col], target_specs.get(col))
-                    total_points += cell_pts
-                    column_points[col] += cell_pts
+                    cell_score = score_cell(sub_row[sub_col], true_row[col], target_specs.get(col))
+                    total_correct += cell_score
+                    column_correct[col] += cell_score
 
-            points = int(round(total_points))
+            percentage = (total_correct / total_cells) * 100.0 if total_cells > 0 else 0.0
+            points = int(round(percentage))
             details = {
                 "matched_rows": total_matches,
-                "target_columns": {col: round(column_points[col], 2) for col in target_cols},
+                "total_cells": total_cells,
+                "accuracy_percent": round(percentage, 2),
+                "target_columns": {
+                    col: round((column_correct[col] / column_totals[col]) * 100.0, 2) if column_totals[col] > 0 else 0.0
+                    for col in target_cols
+                },
             }
 
-            print(f"Team {team.name} scored {points} points ({total_matches} matches, targets: {target_cols})", flush=True)
+            print(
+                f"Team {team.name} scored {points} points ({percentage:.2f}%, {total_matches} matches, targets: {target_cols})",
+                flush=True,
+            )
 
             existing_score = (
                 db.query(DailyScore)
