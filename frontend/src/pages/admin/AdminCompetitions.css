@@ -50,11 +50,6 @@
   max-width: 200px;
 }
 
-.schema-minmax {
-  max-width: 100px !important;
-  flex: 0 0 auto !important;
-}
-
 .file-upload-btn {
   display: flex;
   align-items: center;

@@ -17,21 +17,11 @@ def _check_time(v: str) -> str:
 class ClassificationField(BaseModel):
     field: str
     type: Literal["boolean", "range"]
-    min: int | None = None
-    max: int | None = None
 
     @model_validator(mode="after")
     def check_field(self):
         if not self.field.strip():
             raise ValueError("Field name must not be empty")
-        if self.type == "range":
-            if self.min is None or self.max is None:
-                raise ValueError(f"Range field '{self.field}' needs both min and max")
-            if self.min >= self.max:
-                raise ValueError(f"Range field '{self.field}': min must be < max")
-        else:
-            # boolean fields carry no bounds; drop leftovers from a type switch
-            self.min = self.max = None
         return self
 
 

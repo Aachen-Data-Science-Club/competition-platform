@@ -86,7 +86,7 @@ def seed():
         evaluation_time="20:00",
         required_predictions=[
             {"field": "brand", "type": "boolean"},
-            {"field": "year", "type": "range", "min": 1900, "max": 2026},
+            {"field": "year", "type": "range"},
         ],
     )
     db.add(comp)

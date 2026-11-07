@@ -156,9 +156,6 @@ export default function ChallengeInformation() {
               {schema.map((f, i) => (
                 <div key={i} className="challenge-format-item">
                   <span className="challenge-format-name">{f.field}</span>
-                  {f.type === "range" && f.min != null && f.max != null && (
-                    <span className="challenge-format-range">({f.min} - {f.max})</span>
-                  )}
                 </div>
               ))}
             </div>

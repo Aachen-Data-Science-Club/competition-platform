@@ -24,11 +24,10 @@ function toPayload(f) {
     end_date: f.end_date,
     evaluation_time: f.evaluation_time,
     evaluation_days: f.evaluation_days,
-    required_predictions: f.required_predictions.map(s =>
-      s.type === "range"
-        ? { field: s.field.trim(), type: "range", min: s.min, max: s.max }
-        : { field: s.field.trim(), type: "boolean" }
-    ),
+    required_predictions: f.required_predictions.map(s => ({
+      field: s.field.trim(),
+      type: s.type,
+    })),
   };
 }
 
@@ -40,11 +39,6 @@ function validateForm(f) {
   if (names.length === 0) return "At least one prediction field is required";
   if (names.some(n => !n)) return "Field names must not be empty";
   if (new Set(names).size !== names.length) return "Duplicate field names in the output format";
-  for (const s of f.required_predictions) {
-    if (s.type !== "range") continue;
-    if (!Number.isInteger(s.min) || !Number.isInteger(s.max)) return `Range field '${s.field}' needs min and max`;
-    if (s.min >= s.max) return `Range field '${s.field}': min must be < max`;
-  }
   return null;
 }
 
@@ -142,9 +136,7 @@ export default function AdminChallengeForm() {
 
   function updateSchemaField(index, key, value) {
     const newSchema = [...formData.required_predictions];
-    const next = { ...newSchema[index], [key]: value };
-    if (key === "type" && value !== "range") { delete next.min; delete next.max; }
-    newSchema[index] = next;
+    newSchema[index] = { ...newSchema[index], [key]: value };
     setFormData({ ...formData, required_predictions: newSchema });
   }
 
@@ -308,20 +300,6 @@ export default function AdminChallengeForm() {
                   <option value="boolean">Boolean</option>
                   <option value="range">Range</option>
                 </select>
-                {schema.type === "range" && (
-                  <>
-                    <input type="number" className="input" placeholder="Min"
-                      value={schema.min ?? ""}
-                      onChange={(e) => updateSchemaField(index, "min",
-                        e.target.value === "" ? null : Number.parseInt(e.target.value, 10))}
-                      required style={{ width: "80px" }} />
-                    <input type="number" className="input" placeholder="Max"
-                      value={schema.max ?? ""}
-                      onChange={(e) => updateSchemaField(index, "max",
-                        e.target.value === "" ? null : Number.parseInt(e.target.value, 10))}
-                      required style={{ width: "80px" }} />
-                  </>
-                )}
                 {formData.required_predictions.length > 1 && (
                   <button type="button" className="btn btn-secondary btn-icon" onClick={() => removeSchemaField(index)}>
                     X

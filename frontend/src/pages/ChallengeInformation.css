@@ -63,11 +63,6 @@ p.challenge-detail-value {
   color: var(--text-primary);
 }
 
-.challenge-format-range {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
 .download-data-button {
   display: flex;
   gap: 16px; 

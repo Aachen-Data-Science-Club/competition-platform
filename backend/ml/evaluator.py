@@ -87,10 +87,6 @@ def score_cell(pred_val, true_val, spec=None):
         if t_num == p_num:
             return MAX_CELL_POINTS
         if t_num == 0.0:
-            if spec and spec.get("type") == "range" and spec.get("min") is not None and spec.get("max") is not None:
-                span = float(spec["max"]) - float(spec["min"])
-                if 0.0 < span <= 10.0:
-                    return max(0.0, 1.0 - abs(p_num - t_num) / span) * MAX_CELL_POINTS
             return max(0.0, 1.0 - abs(p_num)) * MAX_CELL_POINTS
         return max(0.0, 1.0 - abs(p_num - t_num) / abs(t_num)) * MAX_CELL_POINTS
 
