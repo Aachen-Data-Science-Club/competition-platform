@@ -38,6 +38,8 @@
 
 p.challenge-detail-value {
   margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .challenge-format-list {
