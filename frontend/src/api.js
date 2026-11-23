@@ -142,8 +142,6 @@ export const api = {
       body: formData,
     });
   },
-  adminResetSemester: () =>
-    request("/admin/reset-semester", { method: "POST" }),
   downloadTrainingData: async (compId) => {
     const token = localStorage.getItem("adsc_token");
     return fetch(`${API_BASE}/competitions/${compId}/training-data`, {

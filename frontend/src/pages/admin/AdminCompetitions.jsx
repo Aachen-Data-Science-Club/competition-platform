@@ -23,18 +23,6 @@ export default function AdminCompetitions() {
     }
   }
 
-  async function handleResetSemester() {
-    if (!confirm("Reset ALL scores and submissions and end ALL challenges?" +
-      " Challenges are kept and can be deleted individually. This cannot be undone!")) return;
-    try {
-      await api.adminResetSemester();
-      alert("Semester reset complete!");
-      loadCompetitions();
-    } catch (err) {
-      alert("Error resetting semester");
-    }
-  }
-
   async function evaluate() {
     if(!confirm("Evaluate the latest model of each team now? Note that this button is only visible in development mode")) return;
     try {
@@ -58,10 +46,6 @@ export default function AdminCompetitions() {
       <div className="page-header">
         <h1>Challenges Overview</h1>
         <div style={{ display: "flex", gap: "12px" }}>
-          <button className="btn btn-secondary" onClick={handleResetSemester} style={{ color: "var(--error)", borderColor: "var(--error)" }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            Reset Competition
-          </button>
           <button className="btn btn-primary" onClick={() => navigate("/admin/challenges/new")}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="16" height="16"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Challenge
