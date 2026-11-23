@@ -415,28 +415,6 @@ def upload_day_data(
     return {"detail": "Data uploaded", "path": file_path}
 
 
-@router.post("/reset-semester")
-def reset_semester(admin: dict = Depends(require_admin), db: Session = Depends(get_db)):
-    db.query(Team).update({"total_points": 0})
-    db.query(DailyScore).delete()
-    db.query(Submission).delete()
-    today = date.today()
-    yesterday = today - timedelta(days=1)
-
-    # End all challenges instead of deleting them: running ones end yesterday,
-    # upcoming ones get start = end = yesterday (otherwise end_date < start_date).
-    db.query(Competition).filter(
-        Competition.start_date < today, Competition.end_date >= today
-    ).update({"end_date": yesterday}, synchronize_session=False)
-    db.query(Competition).filter(
-        Competition.start_date >= today
-    ).update({"start_date": yesterday, "end_date": yesterday}, synchronize_session=False)
-
-    db.commit()
-
-    return {"detail": "Semester reset complete"}
-
-
 @router.delete("/competitions/{competition_id}")
 def delete_competition(
     competition_id: int,
